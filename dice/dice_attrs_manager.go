@@ -2,6 +2,7 @@ package dice
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -169,74 +170,115 @@ func (am *AttrsManager) Init(d *Dice) {
 				// 正常工作
 				am.CheckForSave()
 				am.CheckAndFreeUnused()
-				time.Sleep(15 * time.Second)
+				time.Sleep(60 * time.Second)
 			}
 		}
 	}()
 	am.cancel = cancel
 }
 
-func (am *AttrsManager) CheckForSave() (int, int) {
-	times := 0
-	saved := 0
-
+func (am *AttrsManager) CheckForSave() error {
 	db := am.db
 	if db == nil {
 		// 尚未初始化
-		return 0, 0
+		return errors.New("数据库尚未初始化")
 	}
-
-	tx := db.Begin()
-
+	var resultList []*model.AttributesBatchUpsertModel
+	prepareToSave := map[string]int{}
 	am.m.Range(func(key string, value *AttributesItem) bool {
 		if !value.IsSaved {
-			saved += 1
-			value.SaveToDB(tx)
+			saveModel, err := value.GetBatchSaveModel()
+			if err != nil {
+				// 打印日志
+				log.Errorf("定期写入用户数据出错(获取批量保存模型): %v", err)
+				return true
+			}
+			prepareToSave[key] = 1
+			resultList = append(resultList, saveModel)
 		}
-		times += 1
 		return true
 	})
-
-	err := tx.Commit().Error
-	if err != nil {
-		if am.logger != nil {
-			am.logger.Errorf("定期写入用户数据出错(提交事务): %v", err)
-		}
-		_ = tx.Rollback()
-		return times, 0
+	// 整体落盘
+	if len(resultList) == 0 {
+		log.Infof("[松子调试用]定期写入用户数据(批量保存) %v 条", len(resultList))
+		return nil
 	}
-	return times, saved
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := model.AttrsPutsByIDBatch(tx, resultList); err != nil {
+			// 打印日志
+			log.Errorf("定期写入用户数据出错(批量保存): %v", err)
+			return err
+		}
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	// 如果有问题，不修改Saved状态，下次一定
+	if err != nil {
+		return err
+	}
+	for key := range prepareToSave {
+		// 理应不存在这个数据没有的情况
+		v, _ := am.m.Load(key)
+		v.IsSaved = true
+	}
+	// 输出日志本次落盘了几个数据
+	log.Infof("[松子调试用]定期写入用户数据(批量保存) %v 条", len(resultList))
+
+	return nil
 }
 
 // CheckAndFreeUnused 此函数会被定期调用，释放最近不用的对象
-func (am *AttrsManager) CheckAndFreeUnused() {
+func (am *AttrsManager) CheckAndFreeUnused() error {
 	db := am.db
 	if db == nil {
 		// 尚未初始化
-		return
+		return errors.New("数据库尚未初始化")
 	}
 
 	prepareToFree := map[string]int{}
-	currentTime := time.Now().Unix()
-	tx := db.Begin()
+	currentTime := time.Now()
+	var resultList []*model.AttributesBatchUpsertModel
 	am.m.Range(func(key string, value *AttributesItem) bool {
-		if value.LastUsedTime-currentTime > 60*10 {
+		lastUsedTime := time.Unix(value.LastUsedTime, 0)
+		if lastUsedTime.Sub(currentTime) > 10*time.Minute {
+			saveModel, err := value.GetBatchSaveModel()
+			if err != nil {
+				// 打印日志
+				log.Errorf("定期清理用户数据出错(获取批量保存模型): %v", err)
+				return true
+			}
 			prepareToFree[key] = 1
-			// 直接保存
-			value.SaveToDB(tx)
+			resultList = append(resultList, saveModel)
 		}
 		return true
 	})
-	err := tx.Commit().Error
-	if err != nil {
-		if am.logger != nil {
-			am.logger.Errorf("定期清理无用用户数据出错(提交事务): %v", err)
+
+	// 整体落盘
+	if len(resultList) == 0 {
+		log.Infof("[松子调试用]定期清理用户数据(批量保存) %v 条", len(resultList))
+		return nil
+	}
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := model.AttrsPutsByIDBatch(tx, resultList); err != nil {
+			// 打印日志
+			log.Errorf("定期清理用户数据出错(批量保存): %v", err)
+			return err
 		}
-		_ = tx.Rollback()
+		return nil
+	})
+	// 如果有问题，不修改Saved状态，下次一定
+	if err != nil {
+		return err
 	}
+
 	for key := range prepareToFree {
-		am.m.Delete(key)
+		// 理应不存在这个数据没有的情况
+		v, _ := am.m.LoadAndDelete(key)
+		v.IsSaved = true
 	}
+	// 输出日志本次落盘了几个数据
+	log.Infof("[松子调试用]定期清理用户数据(批量保存) %v 条", len(resultList))
+	return nil
 }
 
 func (am *AttrsManager) CharBind(charId string, groupId string, userId string) error {
@@ -310,6 +352,19 @@ func (i *AttributesItem) SaveToDB(db *gorm.DB) {
 		return
 	}
 	i.IsSaved = true
+}
+
+func (i *AttributesItem) GetBatchSaveModel() (*model.AttributesBatchUpsertModel, error) {
+	rawData, err := ds.NewDictVal(i.valueMap).V().ToJSON()
+	if err != nil {
+		return nil, err
+	}
+	return &model.AttributesBatchUpsertModel{
+		Id:        i.ID,
+		Data:      rawData,
+		Name:      i.Name,
+		SheetType: i.SheetType,
+	}, nil
 }
 
 func (i *AttributesItem) Load(name string) *ds.VMValue {
