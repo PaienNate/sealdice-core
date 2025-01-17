@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/base64"
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"sealdice-core/dice"
+	log "sealdice-core/utils/kratos"
 )
 
 func ImConnections(c echo.Context) error {
@@ -137,46 +137,18 @@ func ImConnectionsSetData(c echo.Context) error {
 	return c.JSON(http.StatusNotFound, nil)
 }
 
-func ImConnectionsRWSignServerUrl(c echo.Context) error {
+func ImConnectionsGetSignInfo(c echo.Context) error {
 	if !doAuth(c) {
 		return c.JSON(http.StatusForbidden, nil)
 	}
-	if dm.JustForTest {
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"testMode": true,
-		})
-	}
 
-	v := struct {
-		ID                string `form:"id" json:"id"`
-		SignServerUrl     string `form:"signServerUrl" json:"signServerUrl"`
-		W                 bool   `form:"w" json:"w"`
-		SignServerVersion string `form:"signServerVersion" json:"signServerVersion"`
-	}{}
-
-	err := c.Bind(&v)
+	data, err := dice.LagrangeGetSignInfo(myDice)
 	if err != nil {
-		myDice.Save(false)
-		return c.JSON(http.StatusNotFound, nil)
+		return Error(&c, "读取SignInfo失败", Response{})
 	}
-	for _, i := range myDice.ImSession.EndPoints {
-		if i.ID != v.ID {
-			continue
-		}
-		if i.ProtocolType == "onebot" {
-			pa := i.Adapter.(*dice.PlatformAdapterGocq)
-			if pa.BuiltinMode == "lagrange" {
-				signServerUrl, signServerVersion := dice.RWLagrangeSignServerUrl(myDice, i, v.SignServerUrl, v.W, v.SignServerVersion)
-				if signServerUrl != "" {
-					return Success(&c, Response{
-						"signServerUrl":     signServerUrl,
-						"signServerVersion": signServerVersion,
-					})
-				}
-			}
-		}
-	}
-	return Error(&c, "读取signServerUrl字段失败", Response{})
+	return Success(&c, Response{
+		"data": data,
+	})
 }
 
 func ImConnectionsDel(c echo.Context) error {
@@ -207,7 +179,7 @@ func ImConnectionsDel(c echo.Context) error {
 					myDice.ImSession.EndPoints = append(myDice.ImSession.EndPoints[:index], myDice.ImSession.EndPoints[index+1:]...)
 					if i.ProtocolType == "onebot" {
 						pa := i.Adapter.(*dice.PlatformAdapterGocq)
-						if pa.BuiltinMode == "lagrange" {
+						if pa.BuiltinMode == "lagrange" || pa.BuiltinMode == "lagrange-gocq" {
 							dice.BuiltinQQServeProcessKillBase(myDice, i, true)
 							// 经测试，若不延时，可能导致清理对应目录失败（原因：文件被占用）
 							time.Sleep(1 * time.Second)
@@ -437,7 +409,7 @@ func ImConnectionsGocqhttpRelogin(c echo.Context) error {
 	if err == nil {
 		for _, i := range myDice.ImSession.EndPoints {
 			if i.ID == v.ID {
-				fmt.Print("!!! relogin ", v.ID)
+				log.Warnf("relogin %s", v.ID)
 				i.Adapter.DoRelogin()
 				return c.JSON(http.StatusOK, nil)
 			}
@@ -967,8 +939,9 @@ func ImConnectionsAddBuiltinLagrange(c echo.Context) error {
 
 	v := struct {
 		Account           string `yaml:"account" json:"account"`
-		SignServerUrl     string `yaml:"signServerUrl" json:"signServerUrl"`
+		SignServerName    string `yaml:"signServerName" json:"signServerName"`
 		SignServerVersion string `yaml:"signServerVersion" json:"signServerVersion"`
+		IsGocq            bool   `yaml:"isGocq" json:"isGocq"`
 	}{}
 	err := c.Bind(&v)
 	if err == nil {
@@ -977,7 +950,7 @@ func ImConnectionsAddBuiltinLagrange(c echo.Context) error {
 			return nil
 		}
 
-		conn := dice.NewLagrangeConnectInfoItem(v.Account)
+		conn := dice.NewLagrangeConnectInfoItem(v.Account, v.IsGocq)
 		conn.UserID = dice.FormatDiceIDQQ(uid)
 		conn.Session = myDice.ImSession
 		pa := conn.Adapter.(*dice.PlatformAdapterGocq)
@@ -990,9 +963,11 @@ func ImConnectionsAddBuiltinLagrange(c echo.Context) error {
 		if err != nil {
 			return err
 		}
+		pa.SignServerName = v.SignServerName
+		pa.SignServerVer = v.SignServerVersion
 		dice.LagrangeServe(myDice, conn, dice.LagrangeLoginInfo{
 			UIN:               uin,
-			SignServerUrl:     v.SignServerUrl,
+			SignServerName:    v.SignServerName,
 			SignServerVersion: v.SignServerVersion,
 			IsAsyncRun:        true,
 		})
