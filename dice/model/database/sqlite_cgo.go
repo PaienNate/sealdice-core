@@ -20,6 +20,7 @@ func SQLiteDBInit(path string, useWAL bool) (*gorm.DB, error) {
 		return nil, err
 	}
 	// Enable Cache Mode
+	// DELETE
 	open, err = cache.GetBuntCacheDB(open)
 	if err != nil {
 		return nil, err
