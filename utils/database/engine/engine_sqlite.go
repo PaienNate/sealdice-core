@@ -265,10 +265,13 @@ func (s *SQLiteEngine) dataDBInit() error {
 		&model.BanInfo{},
 		&model.EndpointInfo{},
 		&model.AttributesItemModel{},
+		// 150 新增：更新版本记录功能
+		&model.UpgradeEntry{},
 	)
 	if err != nil {
 		return err
 	}
+
 	s.readList[DataDBKey] = readDB
 	s.writeList[DataDBKey] = writeDB
 	return nil

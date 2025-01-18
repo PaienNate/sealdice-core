@@ -181,6 +181,8 @@ func (s *MYSQLEngine) dataDBInit() (*gorm.DB, error) {
 		&model.BanInfo{},
 		&model.EndpointInfo{},
 		&model.AttributesItemModel{},
+		// 150 新增：更新版本记录功能
+		&model.UpgradeEntry{},
 	)
 	if err != nil {
 		return nil, err
