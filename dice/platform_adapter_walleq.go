@@ -16,8 +16,9 @@ import (
 
 	"github.com/sacOO7/gowebsocket"
 
-	"sealdice-core/dice/model"
+	"sealdice-core/dice/dao"
 	"sealdice-core/message"
+	"sealdice-core/utils"
 	"sealdice-core/utils/procs"
 )
 
@@ -49,9 +50,9 @@ type PlatformAdapterWalleQ struct {
 	InPackWalleQDisconnectedCH chan int `yaml:"-" json:"-"`                                     // 信号量，用于关闭连接
 	IgnoreFriendRequest        bool     `yaml:"ignoreFriendRequest" json:"ignoreFriendRequest"` // 忽略好友请求处理开关
 
-	echoMap        *SyncMap[string, chan *EventWalleQBase] `yaml:"-"`
-	FileMap        *SyncMap[string, string]                // 记录上传文件后得到的 id
-	Implementation string                                  `yaml:"implementation" json:"implementation"`
+	echoMap        *utils.SyncMap[string, chan *EventWalleQBase] `yaml:"-"`
+	FileMap        *utils.SyncMap[string, string]                // 记录上传文件后得到的 id
+	Implementation string                                        `yaml:"implementation" json:"implementation"`
 }
 
 type EventWalleQBase struct {
@@ -439,7 +440,7 @@ func (pa *PlatformAdapterWalleQ) Serve() int {
 				groupInfo, ok := s.ServiceAtNew.Load(msg.GroupID)
 				if ok {
 					if groupInfo.LogOn {
-						_ = model.LogMarkDeleteByMsgID(ctx.Dice.DBOperator, groupInfo.GroupID, groupInfo.LogCurName, n.MessageID)
+						_ = dao.LogMarkDeleteByMsgID(ctx.Dice.DBOperator, groupInfo.GroupID, groupInfo.LogCurName, n.MessageID)
 					}
 				}
 				return
@@ -958,7 +959,7 @@ func (pa *PlatformAdapterWalleQ) waitGroupMemberInfoEcho(echo string, beforeWait
 	ch := make(chan *EventWalleQBase, 1)
 
 	if pa.echoMap == nil {
-		pa.echoMap = new(SyncMap[string, chan *EventWalleQBase])
+		pa.echoMap = new(utils.SyncMap[string, chan *EventWalleQBase])
 	}
 	pa.echoMap.Store(echo, ch)
 

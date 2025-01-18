@@ -454,7 +454,7 @@ func (pa *PlatformAdapterGocq) waitEcho(echo any, beforeWait func()) *MessageQQ 
 	ch := make(chan *MessageQQ, 1)
 
 	if pa.echoMap == nil {
-		pa.echoMap = new(SyncMap[any, chan *MessageQQ])
+		pa.echoMap = new(utils.SyncMap[any, chan *MessageQQ])
 	}
 
 	// 注: 之所以这样是因为echo是json.RawMessage
@@ -467,7 +467,7 @@ func (pa *PlatformAdapterGocq) waitEcho(echo any, beforeWait func()) *MessageQQ 
 
 func (pa *PlatformAdapterGocq) waitEcho2(echo any, value interface{}, beforeWait func(emi *echoMapInfo)) error {
 	if pa.echoMap2 == nil {
-		pa.echoMap2 = new(SyncMap[any, *echoMapInfo])
+		pa.echoMap2 = new(utils.SyncMap[any, *echoMapInfo])
 	}
 
 	emi := &echoMapInfo{ch: make(chan string, 1)}

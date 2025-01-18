@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"sealdice-core/message"
+	"sealdice-core/utils"
 	"sealdice-core/utils/satori"
 
 	"github.com/google/uuid"
@@ -18,11 +19,11 @@ type PlatformAdapterSealChat struct {
 	Session  *IMSession    `yaml:"-" json:"-"`
 	EndPoint *EndPointInfo `yaml:"-" json:"-"`
 
-	ConnectURL string                    `yaml:"connectUrl" json:"connectUrl"` // 连接地址
-	Token      string                    `yaml:"token" json:"token"`
-	Socket     *gowebsocket.Socket       `yaml:"-" json:"-"`
-	EchoMap    SyncMap[string, chan any] `yaml:"-" json:"-"`
-	UserID     string                    `yaml:"-" json:"-"`
+	ConnectURL string                          `yaml:"connectUrl" json:"connectUrl"` // 连接地址
+	Token      string                          `yaml:"token" json:"token"`
+	Socket     *gowebsocket.Socket             `yaml:"-" json:"-"`
+	EchoMap    utils.SyncMap[string, chan any] `yaml:"-" json:"-"`
+	UserID     string                          `yaml:"-" json:"-"`
 
 	Reconnecting    bool `yaml:"-" json:"-"`
 	RetryTimes      int  `yaml:"-" json:"-"`

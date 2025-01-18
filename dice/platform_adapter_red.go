@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"sealdice-core/message"
+	"sealdice-core/utils"
 
 	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
@@ -40,7 +41,7 @@ type PlatformAdapterRed struct {
 
 	conn      *websocket.Conn
 	muxSend   sync.Mutex
-	memberMap *SyncMap[string, *SyncMap[string, *GroupMember]]
+	memberMap *utils.SyncMap[string, *utils.SyncMap[string, *GroupMember]]
 }
 
 type RedPack[T any] struct {
@@ -675,14 +676,14 @@ func (pa *PlatformAdapterRed) GetGroupInfoAsync(_ string) {
 	if pa.memberMap == nil {
 		// Pinenutn: 不清楚在这种情况下，内部结构的兼容性如何，只能是走一步看一步
 		// 该说好消息是，似乎只有下面在用……
-		pa.memberMap = new(SyncMap[string, *SyncMap[string, *GroupMember]])
+		pa.memberMap = new(utils.SyncMap[string, *utils.SyncMap[string, *GroupMember]])
 	}
 
 	refreshMembers := func(group *Group) {
 		groupID := formatDiceIDRedGroup(group.GroupCode)
 		members := pa.getMemberList(group.GroupCode, group.MemberCount)
 		groupInfo, ok := session.ServiceAtNew.Load(groupID)
-		groupMemberMap := new(SyncMap[string, *GroupMember])
+		groupMemberMap := new(utils.SyncMap[string, *GroupMember])
 		for _, member := range members {
 			userID := formatDiceIDRed(member.Uin)
 			groupMemberMap.Store(userID, member)

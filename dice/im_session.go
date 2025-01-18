@@ -13,8 +13,11 @@ import (
 
 	"github.com/samber/lo"
 
-	"sealdice-core/dice/model"
+	"sealdice-core/dice/dao"
 	"sealdice-core/message"
+	"sealdice-core/model"
+	"sealdice-core/utils"
+	"sealdice-core/utils/database"
 	log "sealdice-core/utils/kratos"
 
 	"github.com/golang-module/carbon"
@@ -78,21 +81,21 @@ type GroupPlayerInfoBase struct {
 type GroupPlayerInfo model.GroupPlayerInfoBase
 
 type GroupInfo struct {
-	Active           bool                               `json:"active" yaml:"active" jsbind:"active"`          // 是否在群内开启 - 过渡为象征意义
-	ActivatedExtList []*ExtInfo                         `yaml:"activatedExtList,flow" json:"activatedExtList"` // 当前群开启的扩展列表
-	ExtListSnapshot  []string                           `yaml:"-" json:"-"`                                    // 存放当前激活的扩展表，无论其是否存在，用于处理插件重载后优先级混乱的问题
-	Players          *SyncMap[string, *GroupPlayerInfo] `yaml:"-" json:"-"`                                    // 群员角色数据
+	Active           bool                                     `json:"active" yaml:"active" jsbind:"active"`          // 是否在群内开启 - 过渡为象征意义
+	ActivatedExtList []*ExtInfo                               `yaml:"activatedExtList,flow" json:"activatedExtList"` // 当前群开启的扩展列表
+	ExtListSnapshot  []string                                 `yaml:"-" json:"-"`                                    // 存放当前激活的扩展表，无论其是否存在，用于处理插件重载后优先级混乱的问题
+	Players          *utils.SyncMap[string, *GroupPlayerInfo] `yaml:"-" json:"-"`                                    // 群员角色数据
 
-	GroupID         string                 `yaml:"groupId" json:"groupId" jsbind:"groupId"`
-	GuildID         string                 `yaml:"guildId" json:"guildId" jsbind:"guildId"`
-	ChannelID       string                 `yaml:"channelId" json:"channelId" jsbind:"channelId"`
-	GroupName       string                 `yaml:"groupName" json:"groupName" jsbind:"groupName"`
-	DiceIDActiveMap *SyncMap[string, bool] `yaml:"diceIds,flow" json:"diceIdActiveMap"` // 对应的骰子ID(格式 平台:ID)，对应单骰多号情况，例如骰A B都加了群Z，A退群不会影响B在群内服务
-	DiceIDExistsMap *SyncMap[string, bool] `yaml:"-" json:"diceIdExistsMap"`            // 对应的骰子ID(格式 平台:ID)是否存在于群内
-	BotList         *SyncMap[string, bool] `yaml:"botList,flow" json:"botList"`         // 其他骰子列表
-	DiceSideNum     int64                  `yaml:"diceSideNum" json:"diceSideNum"`      // 以后可能会支持 1d4 这种默认面数，暂不开放给js
-	DiceSideExpr    string                 `yaml:"diceSideExpr" json:"diceSideExpr"`    //
-	System          string                 `yaml:"system" json:"system"`                // 规则系统，概念同bcdice的gamesystem，距离如dnd5e coc7
+	GroupID         string                       `yaml:"groupId" json:"groupId" jsbind:"groupId"`
+	GuildID         string                       `yaml:"guildId" json:"guildId" jsbind:"guildId"`
+	ChannelID       string                       `yaml:"channelId" json:"channelId" jsbind:"channelId"`
+	GroupName       string                       `yaml:"groupName" json:"groupName" jsbind:"groupName"`
+	DiceIDActiveMap *utils.SyncMap[string, bool] `yaml:"diceIds,flow" json:"diceIdActiveMap"` // 对应的骰子ID(格式 平台:ID)，对应单骰多号情况，例如骰A B都加了群Z，A退群不会影响B在群内服务
+	DiceIDExistsMap *utils.SyncMap[string, bool] `yaml:"-" json:"diceIdExistsMap"`            // 对应的骰子ID(格式 平台:ID)是否存在于群内
+	BotList         *utils.SyncMap[string, bool] `yaml:"botList,flow" json:"botList"`         // 其他骰子列表
+	DiceSideNum     int64                        `yaml:"diceSideNum" json:"diceSideNum"`      // 以后可能会支持 1d4 这种默认面数，暂不开放给js
+	DiceSideExpr    string                       `yaml:"diceSideExpr" json:"diceSideExpr"`    //
+	System          string                       `yaml:"system" json:"system"`                // 规则系统，概念同bcdice的gamesystem，距离如dnd5e coc7
 
 	HelpPackages []string `yaml:"-" json:"helpPackages"`
 	CocRuleIndex int      `yaml:"cocRuleIndex" json:"cocRuleIndex" jsbind:"cocRuleIndex"`
@@ -224,13 +227,13 @@ func (group *GroupInfo) IsActive(ctx *MsgContext) bool {
 	return false
 }
 
-func (group *GroupInfo) PlayerGet(operator model.DatabaseOperator, id string) *GroupPlayerInfo {
+func (group *GroupInfo) PlayerGet(operator database.DatabaseOperator, id string) *GroupPlayerInfo {
 	if group.Players == nil {
-		group.Players = new(SyncMap[string, *GroupPlayerInfo])
+		group.Players = new(utils.SyncMap[string, *GroupPlayerInfo])
 	}
 	p, exists := group.Players.Load(id)
 	if !exists {
-		basePtr := model.GroupPlayerInfoGet(operator, group.GroupID, id)
+		basePtr := dao.GroupPlayerInfoGet(operator, group.GroupID, id)
 		p = (*GroupPlayerInfo)(basePtr)
 		if p != nil {
 			group.Players.Store(id, p)
@@ -252,7 +255,7 @@ func (group *GroupInfo) GetCharTemplate(dice *Dice) *GameSystemTemplate {
 		return &GameSystemTemplate{
 			Name:     group.System,
 			FullName: "空白模板",
-			AliasMap: new(SyncMap[string, string]),
+			AliasMap: new(utils.SyncMap[string, string]),
 		}
 	}
 	// 没有system，查看扩展的启动情况
@@ -271,7 +274,7 @@ func (group *GroupInfo) GetCharTemplate(dice *Dice) *GameSystemTemplate {
 	blankTmpl := &GameSystemTemplate{
 		Name:     "空白模板",
 		FullName: "空白模板",
-		AliasMap: new(SyncMap[string, string]),
+		AliasMap: new(utils.SyncMap[string, string]),
 	}
 	return blankTmpl
 }
@@ -457,8 +460,7 @@ func (ep *EndPointInfo) StatsRestore(d *Dice) {
 		return // 尚未连接完成的新账号没有UserId, 跳过
 	}
 
-	m := model.EndpointInfo{UserID: ep.UserID}
-	err := m.Query(d.DBOperator)
+	m, err := dao.GetEndpointInfo(d.DBOperator, ep.UserID)
 	if err != nil {
 		d.Logger.Errorf("恢复endpoint统计数据失败 %v : %v", ep.UserID, err)
 		return
@@ -488,16 +490,16 @@ func (ep *EndPointInfo) StatsDump(d *Dice) {
 	}
 
 	m := model.EndpointInfo{UserID: ep.UserID, CmdNum: ep.CmdExecutedNum, CmdLastTime: ep.CmdExecutedLastTime, OnlineTime: ep.OnlineTotalTime}
-	err := m.Save(d.DBOperator)
+	err := dao.SaveEndpointInfo(d.DBOperator, &m)
 	if err != nil {
 		d.Logger.Errorf("保存endpoint数据到数据库失败 %v : %v", ep.UserID, err)
 	}
 }
 
 type IMSession struct {
-	Parent       *Dice                        `yaml:"-"`
-	EndPoints    []*EndPointInfo              `yaml:"endPoints"`
-	ServiceAtNew *SyncMap[string, *GroupInfo] `json:"servicesAt" yaml:"-"`
+	Parent       *Dice                              `yaml:"-"`
+	EndPoints    []*EndPointInfo                    `yaml:"endPoints"`
+	ServiceAtNew *utils.SyncMap[string, *GroupInfo] `json:"servicesAt" yaml:"-"`
 }
 
 type MsgContext struct {

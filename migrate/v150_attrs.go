@@ -13,8 +13,9 @@ import (
 	ds "github.com/sealdice/dicescript"
 
 	"sealdice-core/dice"
-	"sealdice-core/dice/model"
+	"sealdice-core/model"
 	"sealdice-core/utils"
+	"sealdice-core/utils/consts"
 
 	log "sealdice-core/utils/kratos"
 )
@@ -55,7 +56,7 @@ func convertToNew(name string, ownerId string, data []byte, updatedAt int64) (*m
 		item := &model.AttributesItemModel{
 			Id:        utils.NewID(),
 			Data:      rawData,
-			AttrsType: model.AttrsTypeCharacter,
+			AttrsType: consts.AttrsTypeCharacter,
 
 			// 这些是角色卡专用的
 			Name:      name,
@@ -165,7 +166,7 @@ func attrsGroupUserMigrate(db *sqlx.Tx) (int, int, error) {
 		item := &model.AttributesItemModel{
 			Id:        id,
 			Data:      rawData,
-			AttrsType: model.AttrsTypeGroupUser,
+			AttrsType: consts.AttrsTypeGroupUser,
 
 			// 当前组内绑定的卡
 			BindingSheetId: sheetIdBindByGroupUserId[id],
@@ -242,7 +243,7 @@ func attrsGroupMigrate(db *sqlx.Tx) (int, int, error) {
 		item := &model.AttributesItemModel{
 			Id:        id,
 			Data:      rawData,
-			AttrsType: model.AttrsTypeGroup,
+			AttrsType: consts.AttrsTypeGroup,
 
 			IsHidden: true,
 
@@ -360,7 +361,7 @@ func attrsUserMigrate(db *sqlx.Tx) (int, int, int, error) {
 		item := &model.AttributesItemModel{
 			Id:        ownerId,
 			Data:      rawData,
-			AttrsType: model.AttrsTypeUser,
+			AttrsType: consts.AttrsTypeUser,
 
 			IsHidden:  true,
 			CreatedAt: updatedAt,

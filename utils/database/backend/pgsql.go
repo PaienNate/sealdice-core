@@ -1,11 +1,11 @@
-package database
+package backend
 
 import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"sealdice-core/dice/model/database/cache"
+	"sealdice-core/utils/database/cache"
 )
 
 func PostgresDBInit(dsn string) (*gorm.DB, error) {

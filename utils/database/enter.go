@@ -1,16 +1,12 @@
-package model
+package database
 
 import (
 	"context"
 
 	"gorm.io/gorm"
-)
 
-type DBMode string
-
-const (
-	READ  DBMode = "read"
-	WRITE DBMode = "write"
+	"sealdice-core/utils/consts"
+	"sealdice-core/utils/database/engine"
 )
 
 // DatabaseOperator 本来是单独放了个文件夹的，但是由于现在所有的model都和处理逻辑在一起，如果放在单独文件夹必然会循环依赖
@@ -18,15 +14,15 @@ const (
 type DatabaseOperator interface {
 	Init(ctx context.Context) error
 	DBCheck()
-	GetDataDB(mode DBMode) *gorm.DB
-	GetLogDB(mode DBMode) *gorm.DB
-	GetCensorDB(mode DBMode) *gorm.DB
+	GetDataDB(mode consts.DBMode) *gorm.DB
+	GetLogDB(mode consts.DBMode) *gorm.DB
+	GetCensorDB(mode consts.DBMode) *gorm.DB
 	Close()
 }
 
 // 实现检查 copied from platform
 var (
-	_ DatabaseOperator = (*SQLiteEngine)(nil)
-	_ DatabaseOperator = (*MYSQLEngine)(nil)
-	_ DatabaseOperator = (*PGSQLEngine)(nil)
+	_ DatabaseOperator = (*engine.SQLiteEngine)(nil)
+	_ DatabaseOperator = (*engine.MYSQLEngine)(nil)
+	_ DatabaseOperator = (*engine.PGSQLEngine)(nil)
 )

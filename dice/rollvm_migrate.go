@@ -13,6 +13,7 @@ import (
 	"github.com/samber/lo"
 	ds "github.com/sealdice/dicescript"
 
+	"sealdice-core/utils"
 	log "sealdice-core/utils/kratos"
 )
 
@@ -773,7 +774,7 @@ var reEngineVersionMark = regexp.MustCompile(`\/\/[^\r\n]+\[(v[12])\]`)
 // TextMapCompatibleCheck 新旧预设文本兼容性检测
 func TextMapCompatibleCheck(d *Dice, category, k string, textItems []TextTemplateItem) {
 	key := fmt.Sprintf("%s:%s", category, k)
-	x, _ := d.TextMapCompatible.LoadOrStore(key, &SyncMap[string, TextItemCompatibleInfo]{})
+	x, _ := d.TextMapCompatible.LoadOrStore(key, &utils.SyncMap[string, TextItemCompatibleInfo]{})
 
 	am := d.AttrsManager
 

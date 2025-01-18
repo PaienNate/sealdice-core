@@ -30,7 +30,7 @@ type deviceFile struct {
 	Product      string         `json:"product"`
 	Device       string         `json:"device"`
 	Board        string         `json:"board"`
-	Model        string         `json:"model"`
+	Model        string         `json:"dbmodel"`
 	FingerPrint  string         `json:"finger_print"`
 	BootID       string         `json:"boot_id"`
 	ProcVersion  string         `json:"proc_version"`
@@ -82,7 +82,7 @@ func RandString(n int) string {
 	return string(bytes)
 }
 
-// model	设备
+// dbmodel	设备
 // "iPhone11,2"	iPhone XS
 // "iPhone11,8"	iPhone XR
 // "iPhone12,1"	iPhone 11

@@ -17,7 +17,9 @@ import (
 	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 
-	"sealdice-core/dice/model"
+	"sealdice-core/dice/dao"
+	"sealdice-core/model"
+	"sealdice-core/utils"
 	log "sealdice-core/utils/kratos"
 )
 
@@ -39,7 +41,7 @@ type TextItemCompatibleInfo struct {
 type (
 	TextTemplateWithWeight     = map[string][]TextTemplateItem
 	TextTemplateWithWeightDict = map[string]TextTemplateWithWeight
-	TextTemplateCompatibleDict = SyncMap[string, *SyncMap[string, TextItemCompatibleInfo]]
+	TextTemplateCompatibleDict = utils.SyncMap[string, *utils.SyncMap[string, TextItemCompatibleInfo]]
 )
 
 // TextTemplateHelpItem 辅助信息，用于UI中，大部分自动生成
@@ -2137,8 +2139,8 @@ func (d *Dice) loads() {
 		d.DiceMasters = newDiceMasters
 		// 装载ServiceAtNew
 		// Pinenutn: So,我还是不知道ServiceAtNew到底是个什么鬼东西……太反直觉了……
-		d.ImSession.ServiceAtNew = new(SyncMap[string, *GroupInfo])
-		err = model.GroupInfoListGet(d.DBOperator, func(id string, updatedAt int64, data []byte) {
+		d.ImSession.ServiceAtNew = new(utils.SyncMap[string, *GroupInfo])
+		err = dao.GroupInfoListGet(d.DBOperator, func(id string, updatedAt int64, data []byte) {
 			var groupInfo GroupInfo
 			err = json.Unmarshal(data, &groupInfo)
 			if err == nil {
@@ -2192,13 +2194,13 @@ func (d *Dice) loads() {
 		d.ImSession.ServiceAtNew.Range(func(key string, groupInfo *GroupInfo) bool {
 			// Pinenutn: ServiceAtNew重构
 			if groupInfo.DiceIDActiveMap == nil {
-				groupInfo.DiceIDActiveMap = new(SyncMap[string, bool])
+				groupInfo.DiceIDActiveMap = new(utils.SyncMap[string, bool])
 			}
 			if groupInfo.DiceIDExistsMap == nil {
-				groupInfo.DiceIDExistsMap = new(SyncMap[string, bool])
+				groupInfo.DiceIDExistsMap = new(utils.SyncMap[string, bool])
 			}
 			if groupInfo.BotList == nil {
-				groupInfo.BotList = new(SyncMap[string, bool])
+				groupInfo.BotList = new(utils.SyncMap[string, bool])
 			}
 			return true
 		})
@@ -2343,7 +2345,7 @@ func (d *Dice) loads() {
 		d.Config = config
 	}
 
-	_ = model.BanItemList(d.DBOperator, func(id string, banUpdatedAt int64, data []byte) {
+	_ = dao.BanItemList(d.DBOperator, func(id string, banUpdatedAt int64, data []byte) {
 		var v BanListInfoItem
 		err := json.Unmarshal(data, &v)
 		if err == nil {
@@ -2528,7 +2530,7 @@ func (d *Dice) Save(isAuto bool) {
 					value.UserID = key
 					value.GroupID = groupInfo.GroupID
 					value.UpdatedAt = now // 更新当前时间为 UpdatedAt
-					_ = model.GroupPlayerInfoSave(d.DBOperator, (*model.GroupPlayerInfoBase)(value))
+					_ = dao.GroupPlayerInfoSave(d.DBOperator, (*model.GroupPlayerInfoBase)(value))
 					value.UpdatedAtTime = 0
 				}
 				return true
@@ -2538,7 +2540,7 @@ func (d *Dice) Save(isAuto bool) {
 		if groupInfo.UpdatedAtTime != 0 {
 			data, err := json.Marshal(groupInfo)
 			if err == nil {
-				err := model.GroupInfoSave(d.DBOperator, groupInfo.GroupID, groupInfo.UpdatedAtTime, data)
+				err := dao.GroupInfoSave(d.DBOperator, groupInfo.GroupID, groupInfo.UpdatedAtTime, data)
 				if err != nil {
 					d.Logger.Warnf("保存群组数据失败 %v : %v", groupInfo.GroupID, err.Error())
 				}
@@ -2556,7 +2558,7 @@ func (d *Dice) Save(isAuto bool) {
 
 	// 保存黑名单数据
 	// TODO: 增加更新时间检测
-	// model.BanMapSet(d.DBData, d.Config.BanList.MapToJSON())
+	// dbmodel.BanMapSet(d.DBData, d.Config.BanList.MapToJSON())
 
 	// endpoint数据额外更新到数据库
 	for _, ep := range d.ImSession.EndPoints {

@@ -21,8 +21,10 @@ import (
 	rand2 "golang.org/x/exp/rand"
 	"golang.org/x/exp/slices"
 
+	"sealdice-core/dice/dao"
 	"sealdice-core/dice/logger"
-	"sealdice-core/dice/model"
+	"sealdice-core/utils"
+	"sealdice-core/utils/database"
 	log "sealdice-core/utils/kratos"
 	"sealdice-core/utils/public_dice"
 )
@@ -135,7 +137,7 @@ type Dice struct {
 	BaseConfig      BaseConfig             `yaml:"-"`
 	// DBData          *gorm.DB               `yaml:"-"` // 数据库对象
 	// DBLogs          *gorm.DB               `yaml:"-"` // 数据库对象
-	DBOperator    model.DatabaseOperator
+	DBOperator    database.DatabaseOperator
 	Logger        *log.Helper  `yaml:"-"` // 日志
 	LogWriter     *log.WriterX `yaml:"-"` // 用于api的log对象
 	IsDeckLoading bool         `yaml:"-"` // 正在加载中
@@ -174,7 +176,7 @@ type Dice struct {
 	JsLoadingScript *JsScriptInfo `yaml:"-" json:"-"`
 
 	// 游戏系统规则模板
-	GameSystemMap *SyncMap[string, *GameSystemTemplate] `yaml:"-" json:"-"`
+	GameSystemMap *utils.SyncMap[string, *GameSystemTemplate] `yaml:"-" json:"-"`
 
 	RunAfterLoaded []func() `yaml:"-" json:"-"`
 
@@ -229,7 +231,7 @@ func (d *Dice) Init() {
 	d.CocExtraRules = map[int]*CocRuleInfo{}
 
 	var err error
-	operator, err := model.GetDatabaseOperator()
+	operator, err := dao.GetDatabaseOperator()
 	if err != nil {
 		d.Logger.Errorf("Failed to init database: %v", err)
 	}
@@ -246,9 +248,9 @@ func (d *Dice) Init() {
 	// Pinenutn: 预先初始化对应的SyncMap
 	d.ImSession = &IMSession{}
 	d.ImSession.Parent = d
-	d.ImSession.ServiceAtNew = new(SyncMap[string, *GroupInfo])
+	d.ImSession.ServiceAtNew = new(utils.SyncMap[string, *GroupInfo])
 	d.CmdMap = CmdMapCls{}
-	d.GameSystemMap = new(SyncMap[string, *GameSystemTemplate])
+	d.GameSystemMap = new(utils.SyncMap[string, *GameSystemTemplate])
 	d.ConfigManager = NewConfigManager(filepath.Join(d.BaseConfig.DataDir, "configs", "plugin-configs.json"))
 	err = d.ConfigManager.Load()
 	if err != nil {
@@ -305,14 +307,14 @@ func (d *Dice) Init() {
 				count++
 				d.Save(true)
 				// if count%2 == 0 {
-				//	if err := model.FlushWAL(d.DBData); err != nil {
+				//	if err := dbmodel.FlushWAL(d.DBData); err != nil {
 				//		d.Logger.Error("Failed to flush WAL: ", err)
 				//	}
-				//	if err := model.FlushWAL(d.DBLogs); err != nil {
+				//	if err := dbmodel.FlushWAL(d.DBLogs); err != nil {
 				//		d.Logger.Error("Failed to flush WAL: ", err)
 				//	}
 				//	if d.CensorManager != nil && d.CensorManager.DB != nil {
-				//		if err := model.FlushWAL(d.CensorManager.DB); err != nil {
+				//		if err := dbmodel.FlushWAL(d.CensorManager.DB); err != nil {
 				//			d.Logger.Error("Failed to flush WAL: ", err)
 				//		}
 				//	}
@@ -638,7 +640,7 @@ func (d *Dice) GameSystemTemplateAddEx(tmpl *GameSystemTemplate, overwrite bool)
 		// set 时从这里读取对应System名字的模板
 
 		// 同义词缓存
-		tmpl.AliasMap = new(SyncMap[string, string])
+		tmpl.AliasMap = new(utils.SyncMap[string, string])
 		alias := tmpl.Alias
 		for k, v := range alias {
 			for _, i := range v {

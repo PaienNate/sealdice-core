@@ -10,6 +10,8 @@ import (
 	"golang.org/x/time/rate"
 
 	ds "github.com/sealdice/dicescript"
+
+	"sealdice-core/utils"
 )
 
 var (
@@ -37,7 +39,7 @@ func SetBotOffAtGroup(ctx *MsgContext, groupID string) {
 	groupInfo, ok := session.ServiceAtNew.Load(groupID)
 	if ok {
 		if groupInfo.DiceIDActiveMap == nil {
-			groupInfo.DiceIDActiveMap = new(SyncMap[string, bool])
+			groupInfo.DiceIDActiveMap = new(utils.SyncMap[string, bool])
 		}
 
 		// TODO: 进行更好的是否变更的检查
@@ -55,10 +57,10 @@ func SetBotOnAtGroup(ctx *MsgContext, groupID string) *GroupInfo {
 	group, ok := session.ServiceAtNew.Load(groupID)
 	if ok {
 		if group.DiceIDActiveMap == nil {
-			group.DiceIDActiveMap = new(SyncMap[string, bool])
+			group.DiceIDActiveMap = new(utils.SyncMap[string, bool])
 		}
 		if group.DiceIDExistsMap == nil {
-			group.DiceIDActiveMap = new(SyncMap[string, bool])
+			group.DiceIDActiveMap = new(utils.SyncMap[string, bool])
 		}
 		group.DiceIDActiveMap.Store(ctx.EndPoint.UserID, true)
 		group.Active = true
@@ -77,10 +79,10 @@ func SetBotOnAtGroup(ctx *MsgContext, groupID string) *GroupInfo {
 		session.ServiceAtNew.Store(groupID, &GroupInfo{
 			Active:           true,
 			ActivatedExtList: extLst,
-			Players:          new(SyncMap[string, *GroupPlayerInfo]),
+			Players:          new(utils.SyncMap[string, *GroupPlayerInfo]),
 			GroupID:          groupID,
-			DiceIDActiveMap:  new(SyncMap[string, bool]),
-			DiceIDExistsMap:  new(SyncMap[string, bool]),
+			DiceIDActiveMap:  new(utils.SyncMap[string, bool]),
+			DiceIDExistsMap:  new(utils.SyncMap[string, bool]),
 			CocRuleIndex:     int(session.Parent.Config.DefaultCocRuleIndex),
 			UpdatedAtTime:    time.Now().Unix(),
 		})
@@ -89,13 +91,13 @@ func SetBotOnAtGroup(ctx *MsgContext, groupID string) *GroupInfo {
 	}
 
 	if group.DiceIDActiveMap == nil {
-		group.DiceIDActiveMap = new(SyncMap[string, bool])
+		group.DiceIDActiveMap = new(utils.SyncMap[string, bool])
 	}
 	if group.DiceIDExistsMap == nil {
-		group.DiceIDExistsMap = new(SyncMap[string, bool])
+		group.DiceIDExistsMap = new(utils.SyncMap[string, bool])
 	}
 	if group.BotList == nil {
-		group.BotList = new(SyncMap[string, bool])
+		group.BotList = new(utils.SyncMap[string, bool])
 	}
 
 	group.DiceIDActiveMap.Store(ctx.EndPoint.UserID, true)

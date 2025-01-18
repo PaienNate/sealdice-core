@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"sealdice-core/utils"
 	log "sealdice-core/utils/kratos"
 
 	"github.com/antlabs/strsim"
@@ -65,7 +66,7 @@ func (m *ReplyConditionTextMatch) Clean() {
 }
 
 type replyRegexCacheType struct {
-	cache SyncMap[string, *regexp.Regexp]
+	cache utils.SyncMap[string, *regexp.Regexp]
 }
 
 func (r *replyRegexCacheType) compile(expr string) *regexp.Regexp {

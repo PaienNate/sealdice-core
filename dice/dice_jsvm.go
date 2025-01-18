@@ -33,6 +33,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"sealdice-core/static"
+	"sealdice-core/utils"
 	"sealdice-core/utils/crypto"
 	log "sealdice-core/utils/kratos"
 )
@@ -638,7 +639,7 @@ func (d *Dice) jsClear() {
 	d.JsScriptList = []*JsScriptInfo{}
 	// 清理规则模板
 	// Pinenutn: 由于切换成了其他的syncMap，所以初始化策略需要修改
-	d.GameSystemMap = new(SyncMap[string, *GameSystemTemplate])
+	d.GameSystemMap = new(utils.SyncMap[string, *GameSystemTemplate])
 	d.RegisterBuiltinSystemTemplate()
 	// 关闭js vm
 	if d.JsLoop != nil {

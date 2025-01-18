@@ -1,4 +1,4 @@
-package model
+package dao
 
 import (
 	"errors"
@@ -9,65 +9,20 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"sealdice-core/model"
 	"sealdice-core/utils"
-)
-
-const (
-	AttrsTypeCharacter = "character"
-	AttrsTypeGroupUser = "group_user"
-	AttrsTypeGroup     = "group"
-	AttrsTypeUser      = "user"
+	"sealdice-core/utils/consts"
+	"sealdice-core/utils/database"
+	model2 "sealdice-core/utils/database/dbmodel"
 )
 
 // 注: 角色表有用sheet也有用sheets的，这里数据结构中使用sheet
 
-// AttributesItemModel 新版人物卡。说明一下，这里带s的原因是attrs指的是一个map
-// 补全GORM缺少部分
-type AttributesItemModel struct {
-	Id        string `json:"id" gorm:"column:id"`                                                           // 如果是群内，那么是类似 QQ-Group:12345-QQ:678910，群外是nanoid
-	Data      []byte `json:"data" gorm:"column:data"`                                                       // 序列化后的卡数据，理论上[]byte不会进入字符串缓存，要更好些？
-	AttrsType string `json:"attrsType" gorm:"column:attrs_type;index:idx_attrs_attrs_type_id;default:NULL"` // 分为: 角色卡(character)、组内用户(group_user)、群组(group)、用户(user)
-
-	// 这些是群组内置卡专用的，其实就是替代了绑卡关系表，作为群组内置卡时，这个字段用于存放绑卡关系
-	BindingSheetId string `json:"bindingSheetId" gorm:"column:binding_sheet_id;default:'';index:idx_attrs_binding_sheet_id"` // 绑定的卡片ID
-
-	// 这些是角色卡专用的
-	Name      string `json:"name" gorm:"column:name"`                                    // 卡片名称
-	OwnerId   string `json:"ownerId" gorm:"column:owner_id;index:idx_attrs_owner_id_id"` // 若有明确归属，就是对应的UniformID
-	SheetType string `json:"sheetType" gorm:"column:sheet_type"`                         // 卡片类型，如dnd5e coc7
-	// 手动定义bool类的豹存方式
-	IsHidden bool `json:"isHidden" gorm:"column:is_hidden;type:bool"` // 隐藏的卡片不出现在 pc list 中
-
-	// 通用属性
-	CreatedAt int64 `json:"createdAt" gorm:"column:created_at"`
-	UpdatedAt int64 `json:"updatedAt" gorm:"column:updated_at"`
-
-	// 下面的属性并非数据库字段，而是用于内存中的缓存
-	BindingGroupsNum int64 `json:"bindingGroupNum" gorm:"-"` // 当前绑定中群数
-}
-
-// 兼容旧版本数据库
-func (*AttributesItemModel) TableName() string {
-	return "attrs"
-}
-
-func (m *AttributesItemModel) IsDataExists() bool {
-	return len(m.Data) > 0
-}
-
-// TOOD: 下面这个表记得添加 unique 索引
-
-// PlatformMappingModel 虚拟ID - 平台用户ID 映射表
-type PlatformMappingModel struct {
-	Id       string `json:"id" gorm:"column:id"`               // 虚拟ID，格式为 U:nanoid 意为 User / Uniform / Universal
-	IMUserID string `json:"IMUserID" gorm:"column:im_user_id"` // IM平台的用户ID
-}
-
-func AttrsGetById(operator DatabaseOperator, id string) (*AttributesItemModel, error) {
+func AttrsGetById(operator database.DatabaseOperator, id string) (*model.AttributesItemModel, error) {
 	// 这里必须使用AttributesItemModel结构体，如果你定义一个只有ID属性的结构体去接收，居然能接收到值，这样就会豹错
-	db := operator.GetDataDB(READ)
-	var item AttributesItemModel
-	err := db.Model(&AttributesItemModel{}).
+	db := operator.GetDataDB(consts.READ)
+	var item model.AttributesItemModel
+	err := db.Model(&model.AttributesItemModel{}).
 		Select("id, data, COALESCE(attrs_type, '') as attrs_type, binding_sheet_id, name, owner_id, sheet_type, is_hidden, created_at, updated_at").
 		Where("id = ?", id).
 		Limit(1).
@@ -80,11 +35,11 @@ func AttrsGetById(operator DatabaseOperator, id string) (*AttributesItemModel, e
 }
 
 // AttrsGetBindingSheetIdByGroupId 获取当前正在绑定的ID
-func AttrsGetBindingSheetIdByGroupId(operator DatabaseOperator, id string) (string, error) {
+func AttrsGetBindingSheetIdByGroupId(operator database.DatabaseOperator, id string) (string, error) {
 	// 这里必须使用AttributesItemModel结构体，如果你定义一个只有ID属性的结构体去接收，居然能接收到值，这样就会豹错
-	var item AttributesItemModel
-	db := operator.GetDataDB(READ)
-	err := db.Model(&AttributesItemModel{}).
+	var item model.AttributesItemModel
+	db := operator.GetDataDB(consts.READ)
+	err := db.Model(&model.AttributesItemModel{}).
 		Select("binding_sheet_id").
 		Where("id = ?", id).
 		Limit(1).
@@ -96,12 +51,12 @@ func AttrsGetBindingSheetIdByGroupId(operator DatabaseOperator, id string) (stri
 	return item.BindingSheetId, nil
 }
 
-func AttrsGetIdByUidAndName(operator DatabaseOperator, userId string, name string) (string, error) {
+func AttrsGetIdByUidAndName(operator database.DatabaseOperator, userId string, name string) (string, error) {
 	// 这里必须使用AttributesItemModel结构体
 	// 如果你定义一个只有ID属性的结构体去接收，居然有概率能接收到值，这样就会和之前的行为不一致了
-	var item AttributesItemModel
-	db := operator.GetDataDB(READ)
-	err := db.Model(&AttributesItemModel{}).
+	var item model.AttributesItemModel
+	db := operator.GetDataDB(consts.READ)
+	err := db.Model(&model.AttributesItemModel{}).
 		Select("id").
 		Where("owner_id = ? AND name = ?", userId, name).
 		Limit(1).
@@ -113,8 +68,8 @@ func AttrsGetIdByUidAndName(operator DatabaseOperator, userId string, name strin
 	return item.Id, nil
 }
 
-func AttrsPutById(operator DatabaseOperator, id string, data []byte, name, sheetType string) error {
-	db := operator.GetDataDB(WRITE)
+func AttrsPutById(operator database.DatabaseOperator, id string, data []byte, name, sheetType string) error {
+	db := operator.GetDataDB(consts.WRITE)
 	now := time.Now().Unix() // 获取当前时间
 	// 这里的原本逻辑是：第一次全量创建，第二次修改部分属性
 	// 所以使用了Attrs和Assign配合使用
@@ -123,7 +78,7 @@ func AttrsPutById(operator DatabaseOperator, id string, data []byte, name, sheet
 			// 第一次全量建表
 			"id": id,
 			// 使用BYTE规避无法插入的问题
-			"data":             BYTE(data),
+			"data":             model2.BYTE(data),
 			"is_hidden":        true,
 			"binding_sheet_id": "",
 			"name":             name,
@@ -133,11 +88,11 @@ func AttrsPutById(operator DatabaseOperator, id string, data []byte, name, sheet
 		}).
 		// 如果是更新的情况，更新下面这部分，则需要被更新的为：
 		Assign(map[string]any{
-			"data":       BYTE(data),
+			"data":       model2.BYTE(data),
 			"updated_at": now,
 			"name":       name,
 			"sheet_type": sheetType,
-		}).FirstOrCreate(&AttributesItemModel{}).Error; err != nil {
+		}).FirstOrCreate(&model.AttributesItemModel{}).Error; err != nil {
 		return err // 返回错误
 	}
 	return nil // 操作成功，返回 nil
@@ -151,8 +106,8 @@ type AttributesBatchUpsertModel struct {
 }
 
 // AttrsPutsByIDBatch 特殊入库函数 因为它
-func AttrsPutsByIDBatch(operator DatabaseOperator, saveList []*AttributesBatchUpsertModel) error {
-	db := operator.GetDataDB(WRITE)
+func AttrsPutsByIDBatch(operator database.DatabaseOperator, saveList []*AttributesBatchUpsertModel) error {
+	db := operator.GetDataDB(consts.WRITE)
 	now := time.Now().Unix() // 获取当前时间
 	trulySaveList := make([]map[string]any, 0)
 	for _, singleSave := range saveList {
@@ -160,7 +115,7 @@ func AttrsPutsByIDBatch(operator DatabaseOperator, saveList []*AttributesBatchUp
 			// 第一次全量建表
 			"id": singleSave.Id,
 			// 使用BYTE规避无法插入的问题
-			"data":             BYTE(singleSave.Data),
+			"data":             model2.BYTE(singleSave.Data),
 			"is_hidden":        true,
 			"binding_sheet_id": "",
 			"name":             singleSave.Name,
@@ -171,7 +126,7 @@ func AttrsPutsByIDBatch(operator DatabaseOperator, saveList []*AttributesBatchUp
 	}
 	// 保守的调整一次插入1K条，这应该足够应对大部分场景，这种情况下，相当于有1K个人在60s内绑定了角色卡？
 	batchSize := 1000
-	tableName := (&AttributesItemModel{}).TableName()
+	tableName := (&model.AttributesItemModel{}).TableName()
 	// TODO: 只能手动分批次插入，原因看下面
 	// 由于传入的就是tx，所以这里如果插入失败，会自动回滚
 	err := db.Transaction(func(tx *gorm.DB) error {
@@ -193,7 +148,7 @@ func AttrsPutsByIDBatch(operator DatabaseOperator, saveList []*AttributesBatchUp
 					"sheet_type": clause.Column{Name: "sheet_type", Table: tableName}, // 更新 sheet_type 字段
 				}),
 			}).
-				Model(&AttributesItemModel{}).
+				Model(&model.AttributesItemModel{}).
 				// 注意! 这里有坑，不能使用CreateInBatches + map[string]interface{}。
 				// CreateInBatches会设置结果接收位置为：subtx.Statement.Dest = reflectValue.Slice(i, ends).Interface()
 				// 指向map[string]interface{}，导致数据没办法正确放入。
@@ -208,22 +163,22 @@ func AttrsPutsByIDBatch(operator DatabaseOperator, saveList []*AttributesBatchUp
 	return err
 }
 
-func AttrsDeleteById(operator DatabaseOperator, id string) error {
-	db := operator.GetDataDB(WRITE)
+func AttrsDeleteById(operator database.DatabaseOperator, id string) error {
+	db := operator.GetDataDB(consts.WRITE)
 	// 使用 GORM 的 Delete 方法删除指定 id 的记录
-	if err := db.Where("id = ?", id).Delete(&AttributesItemModel{}).Error; err != nil {
+	if err := db.Where("id = ?", id).Delete(&model.AttributesItemModel{}).Error; err != nil {
 		return err // 返回错误
 	}
 	return nil // 操作成功，返回 nil
 }
 
-func AttrsCharGetBindingList(operator DatabaseOperator, id string) ([]string, error) {
-	db := operator.GetDataDB(READ)
+func AttrsCharGetBindingList(operator database.DatabaseOperator, id string) ([]string, error) {
+	db := operator.GetDataDB(consts.READ)
 	// 定义一个切片用于存储结果
 	var lst []string
 
 	// 使用 GORM 查询绑定的 id 列表
-	if err := db.Model(&AttributesItemModel{}).
+	if err := db.Model(&model.AttributesItemModel{}).
 		Select("id").
 		Where("binding_sheet_id = ?", id).
 		Find(&lst).Error; err != nil {
@@ -233,10 +188,10 @@ func AttrsCharGetBindingList(operator DatabaseOperator, id string) ([]string, er
 	return lst, nil // 返回结果切片
 }
 
-func AttrsCharUnbindAll(operator DatabaseOperator, id string) (int64, error) {
-	db := operator.GetDataDB(WRITE)
+func AttrsCharUnbindAll(operator database.DatabaseOperator, id string) (int64, error) {
+	db := operator.GetDataDB(consts.WRITE)
 	// 使用 GORM 更新绑定的记录，将 binding_sheet_id 设为空字符串
-	result := db.Model(&AttributesItemModel{}).
+	result := db.Model(&model.AttributesItemModel{}).
 		Where("binding_sheet_id = ?", id).
 		Update("binding_sheet_id", "")
 
@@ -247,8 +202,8 @@ func AttrsCharUnbindAll(operator DatabaseOperator, id string) (int64, error) {
 }
 
 // AttrsNewItem 新建一个角色卡/属性容器
-func AttrsNewItem(operator DatabaseOperator, item *AttributesItemModel) (*AttributesItemModel, error) {
-	db := operator.GetDataDB(WRITE)
+func AttrsNewItem(operator database.DatabaseOperator, item *model.AttributesItemModel) (*model.AttributesItemModel, error) {
+	db := operator.GetDataDB(consts.WRITE)
 	id := utils.NewID()                       // 生成新的 ID
 	now := time.Now().Unix()                  // 获取当前时间
 	item.CreatedAt, item.UpdatedAt = now, now // 设置创建和更新时间
@@ -266,8 +221,8 @@ func AttrsNewItem(operator DatabaseOperator, item *AttributesItemModel) (*Attrib
 	return item, nil // 返回新创建的项
 }
 
-func AttrsBindCharacter(operator DatabaseOperator, charId string, id string) error {
-	db := operator.GetDataDB(WRITE)
+func AttrsBindCharacter(operator database.DatabaseOperator, charId string, id string) error {
+	db := operator.GetDataDB(consts.WRITE)
 	// 将新字典值转换为 JSON
 	now := time.Now().Unix()
 	json, err := ds.NewDictVal(nil).V().ToJSON()
@@ -285,7 +240,7 @@ func AttrsBindCharacter(operator DatabaseOperator, charId string, id string) err
 			"id": id,
 			// 如果想在[]bytes里输入值，注意传参的时候不能给any传[]bytes，否则会无法读取，同时还没有豹错，浪费大量时间。
 			// 这里为了兼容，不使用gob的序列化方法处理结构体（同时，也不知道序列化方法是否可用）
-			"data":      BYTE(json),
+			"data":      model2.BYTE(json),
 			"is_hidden": true,
 			// 如果插入成功，原版代码接下来更新这个值，那么现在就是等价的
 			"binding_sheet_id": charId,
@@ -295,7 +250,7 @@ func AttrsBindCharacter(operator DatabaseOperator, charId string, id string) err
 		Assign(map[string]any{
 			"binding_sheet_id": charId,
 		}).
-		FirstOrCreate(&AttributesItemModel{})
+		FirstOrCreate(&model.AttributesItemModel{})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -305,8 +260,8 @@ func AttrsBindCharacter(operator DatabaseOperator, charId string, id string) err
 	return nil
 }
 
-func AttrsGetCharacterListByUserId(operator DatabaseOperator, userId string) ([]*AttributesItemModel, error) {
-	db := operator.GetDataDB(READ)
+func AttrsGetCharacterListByUserId(operator database.DatabaseOperator, userId string) ([]*model.AttributesItemModel, error) {
+	db := operator.GetDataDB(consts.READ)
 	// Pinenutn: 在Gorm中，如果gorm:"-"，优先级似乎很高，经过我自己测试：
 	// 结构体内若使用gorm="-" ，Scan将无法映射到结果中（GPT胡说八道说可以映射上，我试了半天，被骗。）
 	// 如果不带任何标签: GORM对结构体名称进行转换，如BindingGroupNum对应映射:binding_group_num，结果里有binding_group_num自动映射
@@ -323,8 +278,8 @@ func AttrsGetCharacterListByUserId(operator DatabaseOperator, userId string) ([]
 	}
 	var tempResultList []AttrResult
 	// 由于是复杂查询，无法直接使用Models，又为了防止以后attrs表名称修改，故不使用Table而是用TableName替换
-	model := AttributesItemModel{}
-	tableName := model.TableName()
+	fakeModel := model.AttributesItemModel{}
+	tableName := fakeModel.TableName()
 	// 此处使用了JOIN来避免子查询，数据库一般对JOIN有使用索引的优化，所以有性能提升，但是我没有实际测试过性能差距。
 	err := db.Table(fmt.Sprintf("%s AS t1", tableName)).
 		Select("t1.id, t1.name, t1.sheet_type, COUNT(a.id) AS binding_group_num").
@@ -337,9 +292,9 @@ func AttrsGetCharacterListByUserId(operator DatabaseOperator, userId string) ([]
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*AttributesItemModel, len(tempResultList))
+	items := make([]*model.AttributesItemModel, len(tempResultList))
 	for i, tempResult := range tempResultList {
-		items[i] = &AttributesItemModel{
+		items[i] = &model.AttributesItemModel{
 			Id:               tempResult.ID,
 			Name:             tempResult.Name,
 			SheetType:        tempResult.SheetType,

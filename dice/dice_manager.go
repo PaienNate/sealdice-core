@@ -9,6 +9,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"gopkg.in/yaml.v3"
 
+	"sealdice-core/utils"
 	log "sealdice-core/utils/kratos"
 )
 
@@ -67,9 +68,9 @@ type DiceManager struct { //nolint:revive
 	RebootRequestChan      chan int
 	UpdateCheckRequestChan chan int
 
-	GroupNameCache SyncMap[string, *GroupNameCacheItem] // 群名缓存，全局共享, key string value *GroupNameCacheItem
-	UserNameCache  SyncMap[string, *GroupNameCacheItem] // 用户缓存，全局共享, key string value *GroupNameCacheItem
-	UserIDCache    SyncMap[string, int64]               // 用户id缓存 key username (string) value int64 目前仅Telegram adapter使用
+	GroupNameCache utils.SyncMap[string, *GroupNameCacheItem] // 群名缓存，全局共享, key string value *GroupNameCacheItem
+	UserNameCache  utils.SyncMap[string, *GroupNameCacheItem] // 用户缓存，全局共享, key string value *GroupNameCacheItem
+	UserIDCache    utils.SyncMap[string, int64]               // 用户id缓存 key username (string) value int64 目前仅Telegram adapter使用
 
 	Cron                 *cron.Cron
 	ServiceName          string

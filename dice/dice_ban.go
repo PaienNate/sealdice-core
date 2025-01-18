@@ -8,7 +8,8 @@ import (
 
 	"github.com/robfig/cron/v3"
 
-	"sealdice-core/dice/model"
+	"sealdice-core/dice/dao"
+	"sealdice-core/utils"
 )
 
 type BanRankType int
@@ -53,17 +54,17 @@ func (i *BanListInfoItem) toText(_ *Dice) string {
 }
 
 type BanListInfo struct {
-	Parent                                 *Dice                              `yaml:"-" json:"-"`
-	Map                                    *SyncMap[string, *BanListInfoItem] `yaml:"-" json:"-"`
-	BanBehaviorRefuseReply                 bool                               `yaml:"banBehaviorRefuseReply" json:"banBehaviorRefuseReply"`                                 // 拉黑行为: 拒绝回复
-	BanBehaviorRefuseInvite                bool                               `yaml:"banBehaviorRefuseInvite" json:"banBehaviorRefuseInvite"`                               // 拉黑行为: 拒绝邀请
-	BanBehaviorQuitLastPlace               bool                               `yaml:"banBehaviorQuitLastPlace" json:"banBehaviorQuitLastPlace"`                             // 拉黑行为: 退出事发群
-	BanBehaviorQuitPlaceImmediately        bool                               `yaml:"banBehaviorQuitPlaceImmediately" json:"banBehaviorQuitPlaceImmediately"`               // 拉黑行为: 使用时立即退出群
-	BanBehaviorQuitIfAdmin                 bool                               `yaml:"banBehaviorQuitIfAdmin" json:"banBehaviorQuitIfAdmin"`                                 // 拉黑行为: 邀请者以上权限使用时立即退群，否则发出警告信息
-	BanBehaviorQuitIfAdminSilentIfNotAdmin bool                               `yaml:"banBehaviorQuitIfAdminSilentIfNotAdmin" json:"banBehaviorQuitIfAdminSilentIfNotAdmin"` // 拉黑行为: 邀请者以上权限使用时立即退群，否则仅拒绝回复
-	ThresholdWarn                          int64                              `yaml:"thresholdWarn" json:"thresholdWarn"`                                                   // 警告阈值
-	ThresholdBan                           int64                              `yaml:"thresholdBan" json:"thresholdBan"`                                                     // 错误阈值
-	AutoBanMinutes                         int64                              `yaml:"autoBanMinutes" json:"autoBanMinutes"`                                                 // 自动禁止时长
+	Parent                                 *Dice                                    `yaml:"-" json:"-"`
+	Map                                    *utils.SyncMap[string, *BanListInfoItem] `yaml:"-" json:"-"`
+	BanBehaviorRefuseReply                 bool                                     `yaml:"banBehaviorRefuseReply" json:"banBehaviorRefuseReply"`                                 // 拉黑行为: 拒绝回复
+	BanBehaviorRefuseInvite                bool                                     `yaml:"banBehaviorRefuseInvite" json:"banBehaviorRefuseInvite"`                               // 拉黑行为: 拒绝邀请
+	BanBehaviorQuitLastPlace               bool                                     `yaml:"banBehaviorQuitLastPlace" json:"banBehaviorQuitLastPlace"`                             // 拉黑行为: 退出事发群
+	BanBehaviorQuitPlaceImmediately        bool                                     `yaml:"banBehaviorQuitPlaceImmediately" json:"banBehaviorQuitPlaceImmediately"`               // 拉黑行为: 使用时立即退出群
+	BanBehaviorQuitIfAdmin                 bool                                     `yaml:"banBehaviorQuitIfAdmin" json:"banBehaviorQuitIfAdmin"`                                 // 拉黑行为: 邀请者以上权限使用时立即退群，否则发出警告信息
+	BanBehaviorQuitIfAdminSilentIfNotAdmin bool                                     `yaml:"banBehaviorQuitIfAdminSilentIfNotAdmin" json:"banBehaviorQuitIfAdminSilentIfNotAdmin"` // 拉黑行为: 邀请者以上权限使用时立即退群，否则仅拒绝回复
+	ThresholdWarn                          int64                                    `yaml:"thresholdWarn" json:"thresholdWarn"`                                                   // 警告阈值
+	ThresholdBan                           int64                                    `yaml:"thresholdBan" json:"thresholdBan"`                                                     // 错误阈值
+	AutoBanMinutes                         int64                                    `yaml:"autoBanMinutes" json:"autoBanMinutes"`                                                 // 自动禁止时长
 
 	ScoreReducePerMinute int64 `yaml:"scoreReducePerMinute" json:"scoreReducePerMinute"` // 每分钟下降
 	ScoreGroupMuted      int64 `yaml:"scoreGroupMuted" json:"scoreGroupMuted"`           // 群组禁言
@@ -92,7 +93,7 @@ func (i *BanListInfo) Init() {
 
 	i.JointScorePercentOfGroup = 0.5
 	i.JointScorePercentOfInviter = 0.3
-	i.Map = new(SyncMap[string, *BanListInfoItem])
+	i.Map = new(utils.SyncMap[string, *BanListInfoItem])
 }
 
 func (i *BanListInfo) Loads() {
@@ -119,7 +120,7 @@ func (i *BanListInfo) AfterLoads() {
 		})
 		for _, j := range toDelete {
 			i.Map.Delete(j)
-			_ = model.BanItemDel(d.DBOperator, j)
+			_ = dao.BanItemDel(d.DBOperator, j)
 		}
 
 		(&d.Config).BanList.SaveChanged(d)
@@ -393,7 +394,7 @@ func (i *BanListInfo) SetTrustByID(uid string, place string, reason string) {
 
 func (d *Dice) GetBanList() []*BanListInfoItem {
 	var lst []*BanListInfoItem
-	_ = model.BanItemList(d.DBOperator, func(id string, banUpdatedAt int64, data []byte) {
+	_ = dao.BanItemList(d.DBOperator, func(id string, banUpdatedAt int64, data []byte) {
 		var v BanListInfoItem
 		err := json.Unmarshal(data, &v)
 		if err != nil {
@@ -409,7 +410,7 @@ func (i *BanListInfo) SaveChanged(d *Dice) {
 		if v.UpdatedAt != 0 {
 			data, err := json.Marshal(v)
 			if err == nil {
-				_ = model.BanItemSave(d.DBOperator, k, v.UpdatedAt, v.BanUpdatedAt, data)
+				_ = dao.BanItemSave(d.DBOperator, k, v.UpdatedAt, v.BanUpdatedAt, data)
 				v.UpdatedAt = 0
 			}
 		}
@@ -419,5 +420,5 @@ func (i *BanListInfo) SaveChanged(d *Dice) {
 
 func (i *BanListInfo) DeleteByID(d *Dice, id string) {
 	i.Map.Delete(id)
-	_ = model.BanItemDel(d.DBOperator, id)
+	_ = dao.BanItemDel(d.DBOperator, id)
 }

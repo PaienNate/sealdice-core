@@ -9,8 +9,8 @@ import (
 // 添加 checklist
 func checklistAdd(c echo.Context) error { //nolint
 	// var err error
-	// cl := model.CheckList{}
-	// db := model.GetDB()
+	// cl := dbmodel.CheckList{}
+	// db := dbmodel.GetDB()
 
 	// if err := c.Bind(cl); err != nil {
 	// 	return err

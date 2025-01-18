@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"sealdice-core/utils"
 )
 
 func NewDodoConnItem(clientID string, token string) *EndPointInfo {
@@ -17,7 +19,7 @@ func NewDodoConnItem(clientID string, token string) *EndPointInfo {
 		EndPoint:      conn,
 		ClientID:      clientID,
 		Token:         token,
-		UserPermCache: new(SyncMap[string, *SyncMap[string, *GuildPermCacheItem]]),
+		UserPermCache: new(utils.SyncMap[string, *utils.SyncMap[string, *GuildPermCacheItem]]),
 	}
 	return conn
 }

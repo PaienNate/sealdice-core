@@ -1,4 +1,4 @@
-package model
+package dao
 
 import (
 	"context"
@@ -7,11 +7,15 @@ import (
 
 	"gorm.io/gorm"
 
+	"sealdice-core/model"
+	"sealdice-core/utils/consts"
+	"sealdice-core/utils/database"
+	engine2 "sealdice-core/utils/database/engine"
 	log "sealdice-core/utils/kratos"
 )
 
 var (
-	engine            DatabaseOperator
+	engine            database.DatabaseOperator
 	once              sync.Once
 	errEngineInstance error
 )
@@ -20,25 +24,25 @@ var (
 func initEngine() {
 	dbType := os.Getenv("DB_TYPE")
 	switch dbType {
-	case SQLITE:
+	case consts.SQLITE:
 		log.Info("当前选择使用: SQLITE数据库")
-		engine = &SQLiteEngine{}
-	case MYSQL:
+		engine = &engine2.SQLiteEngine{}
+	case consts.MYSQL:
 		log.Info("当前选择使用: MYSQL数据库")
-		engine = &MYSQLEngine{}
-	case POSTGRESQL:
+		engine = &engine2.MYSQLEngine{}
+	case consts.POSTGRESQL:
 		log.Info("当前选择使用: POSTGRESQL数据库")
-		engine = &PGSQLEngine{}
+		engine = &engine2.PGSQLEngine{}
 	default:
 		log.Warn("未配置数据库类型，默认使用: SQLITE数据库")
-		engine = &SQLiteEngine{}
+		engine = &engine2.SQLiteEngine{}
 	}
 	// TODO: 使用统一管理的context，以确保在程序关闭时，可以正确销毁数据库的context从而优雅退出
 	errEngineInstance = engine.Init(context.Background())
 	if errEngineInstance != nil {
 		log.Error("数据库引擎初始化失败:", errEngineInstance)
 	}
-	err := hackMigrator(engine.GetLogDB(WRITE))
+	err := hackMigrator(engine.GetLogDB(consts.WRITE))
 	if err != nil {
 		log.Errorf("数据库引擎初始化失败: %v", err)
 		return
@@ -46,13 +50,13 @@ func initEngine() {
 }
 
 // getEngine 获取数据库引擎，确保只初始化一次
-func getEngine() (DatabaseOperator, error) {
+func getEngine() (database.DatabaseOperator, error) {
 	once.Do(initEngine)
 	return engine, errEngineInstance
 }
 
 // GetDatabaseOperator 初始化数据和日志数据库
-func GetDatabaseOperator() (DatabaseOperator, error) {
+func GetDatabaseOperator() (database.DatabaseOperator, error) {
 	return getEngine()
 }
 
@@ -63,10 +67,10 @@ func hackMigrator(logsDB *gorm.DB) error {
 		LogID uint64
 		Count int64
 	}
-	logsDB.Model(&LogInfo{}).Where("size IS NULL").Pluck("id", &ids)
+	logsDB.Model(&model.LogInfo{}).Where("size IS NULL").Pluck("id", &ids)
 	if len(ids) > 0 {
 		// 根据 LogInfo 表中的 IDs 查找对应的 LogOneItem 记录
-		err := logsDB.Model(&LogOneItem{}).
+		err := logsDB.Model(&model.LogOneItem{}).
 			Where("log_id IN ?", ids).
 			Group("log_id").
 			Select("log_id, COUNT(*) AS count"). // 如果需要求和其他字段，可以使用 Sum
@@ -80,7 +84,7 @@ func hackMigrator(logsDB *gorm.DB) error {
 		// 2. 更新 LogInfo 表的 Size 字段
 		for _, sum := range logItemSums {
 			// 将求和结果更新到对应的 LogInfo 的 Size 字段
-			err = logsDB.Model(&LogInfo{}).
+			err = logsDB.Model(&model.LogInfo{}).
 				Where("id = ?", sum.LogID).
 				UpdateColumn("size", sum.Count).Error // 或者是 sum.Time 等，如果要是其他字段的求和
 			if err != nil {

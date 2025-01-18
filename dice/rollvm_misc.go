@@ -2,6 +2,8 @@ package dice
 
 import (
 	"strconv"
+
+	"sealdice-core/utils"
 )
 
 type VMValueType int
@@ -36,7 +38,7 @@ type ComputedData struct {
 	Expr string `json:"expr"`
 
 	/* 缓存数据 */
-	Attrs *SyncMap[string, *VMValue] `json:"-"`
+	Attrs *utils.SyncMap[string, *VMValue] `json:"-"`
 }
 
 func (v *VMValue) ReadComputed() (*ComputedData, bool) {

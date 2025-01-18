@@ -6,6 +6,8 @@ import (
 	"github.com/samber/lo"
 
 	ds "github.com/sealdice/dicescript"
+
+	"sealdice-core/utils"
 )
 
 type AttributeOrderOthers struct {
@@ -71,7 +73,7 @@ type GameSystemTemplate struct {
 	PreloadCode string `yaml:"preloadCode" json:"preloadCode"` // 预加载代码
 	// BasedOn           string                 `yaml:"based-on"`           // 基于规则
 
-	AliasMap *SyncMap[string, string] `yaml:"-" json:"-"` // 别名/同义词
+	AliasMap *utils.SyncMap[string, string] `yaml:"-" json:"-"` // 别名/同义词
 }
 
 func (t *GameSystemTemplate) GetAlias(varname string) string {
