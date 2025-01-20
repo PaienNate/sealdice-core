@@ -36,6 +36,7 @@ import (
 	"sealdice-core/utils"
 	"sealdice-core/utils/crypto"
 	log "sealdice-core/utils/kratos"
+	"sealdice-core/version"
 )
 
 var (
@@ -534,15 +535,15 @@ func (d *Dice) JsInit() {
 		_ = seal.Set("getCtxProxyAtPos", GetCtxProxyAtPos)
 		_ = seal.Set("getVersion", func() map[string]interface{} {
 			return map[string]interface{}{
-				"versionCode":   VERSION_CODE,
-				"version":       VERSION.String(),
-				"versionSimple": VERSION_MAIN + VERSION_PRERELEASE,
+				"versionCode":   version.VERSION_CODE,
+				"version":       version.VERSION.String(),
+				"versionSimple": version.VERSION_MAIN + version.VERSION_PRERELEASE,
 				"versionDetail": map[string]interface{}{
-					"major":         VERSION.Major(),
-					"minor":         VERSION.Minor(),
-					"patch":         VERSION.Patch(),
-					"prerelease":    VERSION.Prerelease(),
-					"buildMetaData": VERSION.Metadata(),
+					"major":         version.VERSION.Major(),
+					"minor":         version.VERSION.Minor(),
+					"patch":         version.VERSION.Patch(),
+					"prerelease":    version.VERSION.Prerelease(),
+					"buildMetaData": version.VERSION.Metadata(),
 				},
 			}
 		})
@@ -1006,15 +1007,15 @@ func (d *Dice) JsParseMeta(s string, installTime time.Time, rawData []byte, buil
 				var verOK bool
 				// 有特殊符号时，进行严格的版本检查(只检查当前版本)
 				if strings.ContainsAny(v, "~*^<=>|") || strings.Contains(v, " - ") {
-					verOK = vc.Check(VERSION)
+					verOK = vc.Check(version.VERSION)
 				} else {
-					_, verOK = lo.Find(VERSION_JSAPI_COMPATIBLE, func(v *semver.Version) bool {
+					_, verOK = lo.Find(version.VERSION_JSAPI_COMPATIBLE, func(v *semver.Version) bool {
 						return vc.Check(v)
 					})
 				}
 
 				if !verOK {
-					errMsg = append(errMsg, fmt.Sprintf("插件「%s」依赖的海豹版本限制在 %s，与海豹版本(%s)的JSAPI不兼容", jsInfo.Name, v, VERSION.String()))
+					errMsg = append(errMsg, fmt.Sprintf("插件「%s」依赖的海豹版本限制在 %s，与海豹版本(%s)的JSAPI不兼容", jsInfo.Name, v, version.VERSION.String()))
 				}
 			case "needCompiled":
 				jsInfo.needCompiled = true

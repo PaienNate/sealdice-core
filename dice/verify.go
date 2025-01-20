@@ -12,6 +12,7 @@ import (
 
 	"sealdice-core/utils/crypto"
 	log "sealdice-core/utils/kratos"
+	"sealdice-core/version"
 )
 
 var (
@@ -49,7 +50,7 @@ func GenerateVerificationCode(platform string, userID string, username string, u
 	}
 	// 海豹校验码格式：SEAL<data>
 	p := payload{
-		Version:   VERSION.String(),
+		Version:   version.VERSION.String(),
 		Timestamp: time.Now().Unix(),
 		Platform:  platform,
 		Uid:       userID,
@@ -96,7 +97,7 @@ func GenerateVerificationKeyForPublicDice(data any) string {
 	}
 
 	d := payloadPublicDice{
-		Version: VERSION.String(),
+		Version: version.VERSION.String(),
 		Sign:    sign,
 	}
 

@@ -28,11 +28,17 @@ import (
 	"sealdice-core/dice"
 	"sealdice-core/dice/dao"
 	"sealdice-core/migrate"
+	"sealdice-core/migrate/task/v120"
+	"sealdice-core/migrate/task/v131"
+	"sealdice-core/migrate/task/v141"
+	"sealdice-core/migrate/task/v144"
+	"sealdice-core/migrate/task/v150"
 	"sealdice-core/static"
 	"sealdice-core/utils/crypto"
 	log "sealdice-core/utils/kratos"
 	"sealdice-core/utils/oschecker"
 	"sealdice-core/utils/paniclog"
+	"sealdice-core/version"
 )
 
 /*
@@ -205,7 +211,7 @@ func main() {
 		log.Info(osr)
 	}
 	if opts.Version {
-		fmt.Fprintln(os.Stdout, dice.VERSION.String())
+		fmt.Fprintln(os.Stdout, version.VERSION.String())
 		return
 	}
 	if opts.DBCheck {
@@ -344,7 +350,7 @@ func main() {
 	}
 
 	cwd, _ := os.Getwd()
-	log.Info(dice.APPNAME, dice.VERSION.String(), "当前工作路径: ", cwd)
+	log.Info(version.APPNAME, version.VERSION.String(), "当前工作路径: ", cwd)
 
 	if strings.HasPrefix(cwd, os.TempDir()) {
 		// C:\Users\XXX\AppData\Local\Temp
@@ -374,28 +380,28 @@ func main() {
 	//  }
 
 	// 尝试进行升级
-	migrate.TryMigrateToV12()
+	v120.TryMigrateToV12()
 	// 尝试修正log_items表的message字段类型
 	if migrateErr := migrate.LogItemFixDatatype(); migrateErr != nil {
 		log.Fatalf("修正log_items表时出错，%s", migrateErr.Error())
 		return
 	}
 	// v131迁移历史设置项到自定义文案
-	if migrateErr := migrate.V131DeprecatedConfig2CustomText(); migrateErr != nil {
+	if migrateErr := v131.V131DeprecatedConfig2CustomText(); migrateErr != nil {
 		log.Fatalf("迁移历史设置项时出错，%s", migrateErr.Error())
 		return
 	}
 	// v141重命名刷屏警告字段
-	if migrateErr := migrate.V141DeprecatedConfigRename(); migrateErr != nil {
+	if migrateErr := v141.V141DeprecatedConfigRename(); migrateErr != nil {
 		log.Fatalf("迁移历史设置项时出错，%s", migrateErr.Error())
 		return
 	}
 	// v144删除旧的帮助文档
-	if migrateErr := migrate.V144RemoveOldHelpdoc(); migrateErr != nil {
+	if migrateErr := v144.V144RemoveOldHelpdoc(); migrateErr != nil {
 		log.Fatalf("移除旧帮助文档时出错，%v", migrateErr)
 	}
 	// v150升级
-	err = migrate.V150Upgrade()
+	err = v150.V150Upgrade()
 	if err != nil {
 		// Fatalf将会退出程序...或许应该用Errorf一类的吗？
 		log.Fatalf("您的146数据库可能存在问题，为保护数据，已经停止执行150升级命令。请尝试联系开发者，并提供你的日志。\n"+

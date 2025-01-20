@@ -1,10 +1,9 @@
-package migrate
+package v120
 
 import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -106,14 +105,6 @@ func BoltDBInit(path string) *bbolt.DB {
 	})
 
 	return db
-}
-
-func CreateFakeCtx() *MsgContext {
-	return &MsgContext{
-		Dice: &Dice{
-			DB: BoltDBInit("./data/default/data.bdb"),
-		},
-	}
 }
 
 // LogGetList 获取列表
@@ -300,7 +291,7 @@ func itob(v uint64) []byte {
 	return b
 }
 
-func ConvertLogs() error {
+func ConvertLogs(dbSQL *sqlx.DB) error {
 	texts := []string{
 		`
 create table if not exists logs
@@ -349,17 +340,6 @@ create index if not exists idx_log_items_log_id
     on log_items (log_id);`,
 	}
 
-	// flags := sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenWAL
-	dbDataLogsPath, _ := filepath.Abs("./data/default/data-logs.db")
-
-	dbSQL, err := openDB(dbDataLogsPath)
-	if err != nil {
-		return err
-	}
-	defer func(dbSql *sqlx.DB) {
-		_ = dbSql.Close()
-	}(dbSQL)
-
 	for _, i := range texts {
 		_, _ = dbSQL.Exec(i)
 	}
@@ -391,7 +371,7 @@ create index if not exists idx_log_items_log_id
 	logNum := 0
 
 	num := 0
-	err = dbSQL.Get(&num, "select count(id) from log_items")
+	err := dbSQL.Get(&num, "select count(id) from log_items")
 	if err != nil {
 		return err
 	}

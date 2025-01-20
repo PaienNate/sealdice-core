@@ -19,6 +19,7 @@ import (
 
 	"sealdice-core/dice"
 	log "sealdice-core/utils/kratos"
+	"sealdice-core/version"
 )
 
 const CodeAlreadyExists = 602
@@ -68,11 +69,11 @@ func baseInfo(c echo.Context) error {
 	extraTitle := getName()
 
 	versionDetail := VersionDetail{
-		Major:         dice.VERSION.Major(),
-		Minor:         dice.VERSION.Minor(),
-		Patch:         dice.VERSION.Patch(),
-		Prerelease:    dice.VERSION.Prerelease(),
-		BuildMetaData: dice.VERSION.Metadata(),
+		Major:         version.VERSION.Major(),
+		Minor:         version.VERSION.Minor(),
+		Patch:         version.VERSION.Patch(),
+		Prerelease:    version.VERSION.Prerelease(),
+		BuildMetaData: version.VERSION.Metadata(),
 	}
 
 	return c.JSON(http.StatusOK, struct {
@@ -94,14 +95,14 @@ func baseInfo(c echo.Context) error {
 		JustForTest    bool          `json:"justForTest"`
 		ContainerMode  bool          `json:"containerMode"`
 	}{
-		AppName:        dice.APPNAME,
-		AppChannel:     dice.APP_CHANNEL,
-		Version:        dice.VERSION.String(),
-		VersionSimple:  dice.VERSION_MAIN + dice.VERSION_PRERELEASE,
+		AppName:        version.APPNAME,
+		AppChannel:     version.APP_CHANNEL,
+		Version:        version.VERSION.String(),
+		VersionSimple:  version.VERSION_MAIN + version.VERSION_PRERELEASE,
 		VersionDetail:  versionDetail,
 		VersionNew:     versionNew,
 		VersionNewNote: versionNewNote,
-		VersionCode:    dice.VERSION_CODE,
+		VersionCode:    version.VERSION_CODE,
 		VersionNewCode: versionNewCode,
 		MemoryAlloc:    m.Alloc,
 		MemoryUsedSys:  m.Sys - m.HeapReleased,

@@ -26,6 +26,7 @@ import (
 	"sealdice-core/dice"
 	"sealdice-core/icon"
 	log "sealdice-core/utils/kratos"
+	"sealdice-core/version"
 )
 
 func hideWindow() {
@@ -103,7 +104,7 @@ func getAutoStart() *autostart.App {
 var systrayQuited bool = false
 
 func onReady() {
-	ver := dice.VERSION_MAIN + dice.VERSION_PRERELEASE
+	ver := version.VERSION_MAIN + version.VERSION_PRERELEASE
 	systray.SetIcon(icon.Data)
 	systray.SetTitle("海豹TRPG骰点核心")
 	systray.SetTooltip("海豹TRPG骰点核心 " + ver)
@@ -191,7 +192,7 @@ func httpServe(e *echo.Echo, dm *dice.DiceManager, hideUI bool) {
 	// runtime.LockOSThread()
 
 	go func() {
-		ver := dice.VERSION_MAIN + dice.VERSION_PRERELEASE
+		ver := version.VERSION_MAIN + version.VERSION_PRERELEASE
 		for {
 			time.Sleep(5 * time.Second)
 			if systrayQuited {

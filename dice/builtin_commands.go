@@ -19,6 +19,7 @@ import (
 	ds "github.com/sealdice/dicescript"
 
 	"sealdice-core/dice/docengine"
+	"sealdice-core/version"
 )
 
 /** 这几条指令不能移除 */
@@ -419,7 +420,7 @@ func (d *Dice) registerCoreCommands() {
 		Solve: func(ctx *MsgContext, msg *Message, cmdArgs *CmdArgs) CmdExecuteResult {
 			arg := cmdArgs.GetArgN(1)
 			if arg == "" {
-				text := "海豹核心 " + VERSION.String() + "\n"
+				text := "海豹核心 " + version.VERSION.String() + "\n"
 				text += "官网: sealdice.com" + "\n"
 				text += "海豹群: 524364253" + "\n"
 				text += DiceFormatTmpl(ctx, "核心:骰子帮助文本_附加说明")
@@ -653,7 +654,7 @@ func (d *Dice) registerCoreCommands() {
 			if d.Parent.AppVersionOnline != nil {
 				ver := d.Parent.AppVersionOnline
 				// 如果当前不是最新版，那么提示
-				if ver.VersionLatestCode != VERSION_CODE {
+				if ver.VersionLatestCode != version.VERSION_CODE {
 					onlineVer = "\n最新版本: " + ver.VersionLatestDetail + "\n"
 				}
 			}
@@ -671,7 +672,7 @@ func (d *Dice) registerCoreCommands() {
 			VarSetValueInt64(ctx, "$t启用群数", int64(activeCount))
 			VarSetValueStr(ctx, "$t群内工作状态", groupWorkInfo)
 			VarSetValueStr(ctx, "$t群内工作状态_仅状态", activeText)
-			ver := VERSION.String()
+			ver := version.VERSION.String()
 			arch := runtime.GOARCH
 			if arch != "386" && arch != "amd64" {
 				ver = fmt.Sprintf("%s %s", ver, arch)
@@ -1032,13 +1033,13 @@ func (d *Dice) registerCoreCommands() {
 					}
 
 					if dm.AppVersionOnline != nil {
-						text = fmt.Sprintf("当前本地版本为: %s\n当前线上版本为: %s", VERSION.String(), dm.AppVersionOnline.VersionLatestDetail)
+						text = fmt.Sprintf("当前本地版本为: %s\n当前线上版本为: %s", version.VERSION.String(), dm.AppVersionOnline.VersionLatestDetail)
 						if dm.AppVersionCode != dm.AppVersionOnline.VersionLatestCode {
 							updateCode = strconv.FormatInt(rand.Int63()%8999+1000, 10)
 							text += fmt.Sprintf("\n如需升级，请输入.master checkupdate %s 确认进行升级\n升级将花费约2分钟，升级失败可能导致进程关闭，建议在接触服务器情况下操作。\n当前进程启动时间: %s", updateCode, time.Unix(dm.AppBootTime, 0).Format("2006-01-02 15:04:05"))
 						}
 					} else {
-						text = fmt.Sprintf("当前本地版本为: %s\n当前线上版本为: %s", VERSION.String(), "未知")
+						text = fmt.Sprintf("当前本地版本为: %s\n当前线上版本为: %s", version.VERSION.String(), "未知")
 					}
 					ReplyToSender(ctx, msg, text)
 					break

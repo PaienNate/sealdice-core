@@ -1271,7 +1271,7 @@ func (event *EventWalleQBase) toMessageBase() *Message {
 	case "channel": // wq 未实现
 		msg.Sender.UserID = FormatDiceIDQQCh(event.UserID)
 		msg.Sender.Nickname = event.UserName
-		msg.GroupID = FormatDiceIDQQChGroup(event.ChannelID, event.GuildID) // v12 与海豹标准相反，好别扭啊
+		msg.GroupID = FormatDiceIDQQChGroup(event.ChannelID, event.GuildID) // v120 与海豹标准相反，好别扭啊
 	}
 	return msg
 }

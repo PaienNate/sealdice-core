@@ -21,6 +21,7 @@ import (
 	"sealdice-core/model"
 	"sealdice-core/utils"
 	log "sealdice-core/utils/kratos"
+	"sealdice-core/version"
 )
 
 // type TextTemplateWithWeight = map[string]map[string]uint
@@ -2058,10 +2059,10 @@ func (d *Dice) GenerateTextMap() {
 		}
 	}
 
-	picker, _ := wr.NewChooser(wr.Choice{Item: APPNAME, Weight: 1})
+	picker, _ := wr.NewChooser(wr.Choice{Item: version.APPNAME, Weight: 1})
 	newTextMap["常量:APPNAME"] = picker
 
-	picker, _ = wr.NewChooser(wr.Choice{Item: VERSION.String(), Weight: 1})
+	picker, _ = wr.NewChooser(wr.Choice{Item: version.VERSION.String(), Weight: 1})
 	newTextMap["常量:VERSION"] = picker
 
 	d.TextMap = newTextMap

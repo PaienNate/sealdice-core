@@ -1,4 +1,4 @@
-package migrate
+package v150
 
 import (
 	"database/sql"
@@ -13,6 +13,7 @@ import (
 	ds "github.com/sealdice/dicescript"
 
 	"sealdice-core/dice"
+	"sealdice-core/migrate"
 	"sealdice-core/model"
 	"sealdice-core/utils"
 	"sealdice-core/utils/consts"
@@ -423,7 +424,7 @@ func V150Upgrade() error {
 		return nil
 	}
 
-	db, err := openDB(dbDataPath)
+	db, err := migrate.openDB(dbDataPath)
 	if err != nil {
 		return fmt.Errorf("升级失败，无法打开数据库: %w", err)
 	}

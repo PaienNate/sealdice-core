@@ -20,6 +20,7 @@ import (
 	"sealdice-core/utils/consts"
 	"sealdice-core/utils/crypto"
 	log "sealdice-core/utils/kratos"
+	"sealdice-core/version"
 )
 
 const BackupDir = "./backups"
@@ -328,8 +329,8 @@ func (dm *DiceManager) Backup(sel BackupSelection, fromAuto bool) (string, error
 	// 写入文件信息
 	data, _ := json.Marshal(map[string]interface{}{
 		"config":      cfgGlb,
-		"version":     VERSION.String(),
-		"versionCode": VERSION_CODE,
+		"version":     version.VERSION.String(),
+		"versionCode": version.VERSION_CODE,
 	})
 
 	h := &zip.FileHeader{Name: "backup_info.json", Method: zip.Deflate, Flags: 0x800}

@@ -1,10 +1,9 @@
-package migrate
+package v120
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -150,19 +149,11 @@ type BanListInfoItem struct {
 	BanTime int64       `json:"banTime"` // 上黑名单时间
 }
 
-func ConvertServe() error {
+func ConvertServe(dbSql *sqlx.DB) error {
 	data, err := os.ReadFile("./data/default/serve.yaml")
 	if err != nil {
 		return err
 	}
-	dbDataPath, _ := filepath.Abs("./data/default/data.db")
-	dbSql, err := openDB(dbDataPath)
-	if err != nil {
-		return err
-	}
-	defer func(dbSql *sqlx.DB) {
-		_ = dbSql.Close()
-	}(dbSql)
 
 	texts := []string{
 		`
@@ -281,8 +272,6 @@ create table if not exists ban_info
 	}
 
 	_ = os.WriteFile("./data/default/serve.yaml.old", data, 0644)
-
-	// 处理attrs部分
 	ctx := CreateFakeCtx()
 	db := ctx.Dice.DB
 	defer func(db *bbolt.DB) {

@@ -11,6 +11,7 @@ import (
 
 	"sealdice-core/utils"
 	log "sealdice-core/utils/kratos"
+	"sealdice-core/version"
 )
 
 type VersionInfo struct {
@@ -124,7 +125,7 @@ func (dm *DiceManager) InitHelp() {
 
 // LoadDice 初始化函数
 func (dm *DiceManager) LoadDice() {
-	dm.AppVersionCode = VERSION_CODE
+	dm.AppVersionCode = version.VERSION_CODE
 	dm.AppBootTime = time.Now().Unix()
 
 	_ = os.MkdirAll(BackupDir, 0755)

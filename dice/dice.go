@@ -27,6 +27,7 @@ import (
 	"sealdice-core/utils/database"
 	log "sealdice-core/utils/kratos"
 	"sealdice-core/utils/public_dice"
+	"sealdice-core/version"
 )
 
 type CmdExecuteResult struct {
@@ -390,7 +391,7 @@ func (d *Dice) Init() {
 
 			for {
 				time.Sleep(30 * time.Second)
-				text := fmt.Sprintf("升级完成，当前版本: %s", VERSION.String())
+				text := fmt.Sprintf("升级完成，当前版本: %s", version.VERSION.String())
 
 				if ep.State == 2 {
 					// 还没好，继续等待
@@ -406,7 +407,7 @@ func (d *Dice) Init() {
 					ReplyPerson(ctx, &Message{Sender: SenderBase{UserID: d.Config.UpgradeWindowID}}, text)
 				}
 
-				d.Logger.Infof("升级完成，当前版本: %s", VERSION.String())
+				d.Logger.Infof("升级完成，当前版本: %s", version.VERSION.String())
 				(&d.Config).UpgradeWindowID = ""
 				(&d.Config).UpgradeEndpointID = ""
 				d.MarkModified()
