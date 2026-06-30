@@ -251,6 +251,10 @@ func main() {
 		log.Errorf("Failed to init database: %v", err)
 		return
 	}
+	if err = dboperator.BootstrapDatabaseSchema(); err != nil {
+		log.Errorf("Failed to bootstrap database schema: %v", err)
+		return
+	}
 	diceManager := &dice.DiceManager{
 		Operator: operator,
 	}

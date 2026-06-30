@@ -58,6 +58,14 @@ func GetDatabaseOperator() (operator.DatabaseOperator, error) {
 	return getEngine()
 }
 
+func BootstrapDatabaseSchema() error {
+	dbEngine, err := getEngine()
+	if err != nil {
+		return err
+	}
+	return dbEngine.BootstrapSchema()
+}
+
 // DBCheck 检查数据库状态
 func DBCheck() {
 	log := zap.S().Named(logger.LogKeyDatabase)

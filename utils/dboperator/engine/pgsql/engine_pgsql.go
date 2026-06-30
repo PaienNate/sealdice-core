@@ -12,6 +12,8 @@ import (
 	"sealdice-core/logger"
 	"sealdice-core/utils/cache"
 	"sealdice-core/utils/constant"
+	"sealdice-core/utils/dboperator/bootstrap"
+	operator "sealdice-core/utils/dboperator/engine"
 )
 
 type PGSQLEngine struct {
@@ -107,3 +109,15 @@ func (s *PGSQLEngine) censorDBInit() (*gorm.DB, error) {
 func (s *PGSQLEngine) Type() string {
 	return constant.POSTGRESQL
 }
+
+func (s *PGSQLEngine) BootstrapSchema() error {
+	if err := bootstrap.DataDB(s.Type(), s.dataDB); err != nil {
+		return err
+	}
+	if err := bootstrap.LogDB(s.Type(), s.logsDB); err != nil {
+		return err
+	}
+	return bootstrap.CensorDB(s.censorDB)
+}
+
+var _ operator.DatabaseOperator = (*PGSQLEngine)(nil)

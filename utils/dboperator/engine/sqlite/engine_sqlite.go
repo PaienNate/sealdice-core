@@ -14,6 +14,8 @@ import (
 	"sealdice-core/logger"
 	"sealdice-core/utils/cache"
 	"sealdice-core/utils/constant"
+	"sealdice-core/utils/dboperator/bootstrap"
+	operator "sealdice-core/utils/dboperator/engine"
 )
 
 type SQLiteEngine struct {
@@ -255,3 +257,15 @@ func (s *SQLiteEngine) CensorDBInit() error {
 	s.writeList[CensorsDBKey] = writeDB
 	return nil
 }
+
+func (s *SQLiteEngine) BootstrapSchema() error {
+	if err := bootstrap.DataDB(s.Type(), s.writeList[DataDBKey]); err != nil {
+		return err
+	}
+	if err := bootstrap.LogDB(s.Type(), s.writeList[LogsDBKey]); err != nil {
+		return err
+	}
+	return bootstrap.CensorDB(s.writeList[CensorsDBKey])
+}
+
+var _ operator.DatabaseOperator = (*SQLiteEngine)(nil)

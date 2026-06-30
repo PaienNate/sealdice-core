@@ -130,6 +130,7 @@ func newMockDatabaseOperator(dbPath string) (*mockDatabaseOperator, error) {
 }
 
 func (m *mockDatabaseOperator) Init(_ context.Context) error           { return nil }
+func (m *mockDatabaseOperator) BootstrapSchema() error                 { return nil }
 func (m *mockDatabaseOperator) Type() string                           { return "mock-sqlite" }
 func (m *mockDatabaseOperator) DBCheck()                               {}
 func (m *mockDatabaseOperator) GetDataDB(_ constant.DBMode) *gorm.DB   { return m.db }

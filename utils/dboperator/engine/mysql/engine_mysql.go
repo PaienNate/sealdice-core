@@ -10,9 +10,10 @@ import (
 	"gorm.io/gorm"
 
 	"sealdice-core/logger"
-	"sealdice-core/model"
 	"sealdice-core/utils/cache"
 	"sealdice-core/utils/constant"
+	"sealdice-core/utils/dboperator/bootstrap"
+	operator "sealdice-core/utils/dboperator/engine"
 )
 
 type MYSQLEngine struct {
@@ -102,12 +103,21 @@ func (s *MYSQLEngine) logDBInit() (*gorm.DB, error) {
 func (s *MYSQLEngine) censorDBInit() (*gorm.DB, error) {
 	censorContext := context.WithValue(s.ctx, cache.CacheKey, cache.CensorsDBCacheKey)
 	censorDB := s.DB.WithContext(censorContext)
-	if err := censorDB.AutoMigrate(&model.CensorLog{}); err != nil {
-		return nil, err
-	}
 	return censorDB, nil
 }
 
 func (s *MYSQLEngine) Type() string {
 	return "mysql"
 }
+
+func (s *MYSQLEngine) BootstrapSchema() error {
+	if err := bootstrap.DataDB(s.Type(), s.dataDB); err != nil {
+		return err
+	}
+	if err := bootstrap.LogDB(s.Type(), s.logsDB); err != nil {
+		return err
+	}
+	return bootstrap.CensorDB(s.censorDB)
+}
+
+var _ operator.DatabaseOperator = (*MYSQLEngine)(nil)
