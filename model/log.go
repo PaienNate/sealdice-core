@@ -25,21 +25,21 @@ func (*LogOneItemParquet) TableName() string {
 }
 
 type LogOneItem struct {
-	ID             uint64      `gorm:"primaryKey;autoIncrement;column:id;index:idx_log_delete_by_id,priority:3" json:"id"`
-	LogID          uint64      `gorm:"column:log_id;index:idx_log_items_log_id"                                json:"-"`
-	GroupID        string      `gorm:"index:idx_log_items_group_id;column:group_id;index:idx_log_delete_by_id,priority:1"`
-	Nickname       string      `gorm:"column:nickname"                                                         json:"nickname"`
-	IMUserID       string      `gorm:"column:im_userid"                                                        json:"IMUserId"`
-	Time           int64       `gorm:"column:time"                                                             json:"time"`
-	Message        string      `gorm:"column:message"                                                          json:"message"`
-	IsDice         bool        `gorm:"column:is_dice"                                                          json:"isDice"`
-	CommandID      int64       `gorm:"column:command_id"                                                       json:"commandId"`
-	CommandInfo    interface{} `gorm:"-"                                                                       json:"commandInfo" parquet:"-"`
-	CommandInfoStr string      `gorm:"column:command_info"                                                     json:"-"`
+	ID             uint64      `gorm:"primaryKey;autoIncrement;column:id"       json:"id"`
+	LogID          uint64      `gorm:"column:log_id;index:idx_log_items_log_id" json:"-"`
+	GroupID        string      `gorm:"index:idx_log_items_group_id;column:group_id"`
+	Nickname       string      `gorm:"column:nickname" json:"nickname"`
+	IMUserID       string      `gorm:"column:im_userid" json:"IMUserId"`
+	Time           int64       `gorm:"column:time" json:"time"`
+	Message        string      `gorm:"column:message" json:"message"`
+	IsDice         bool        `gorm:"column:is_dice" json:"isDice"`
+	CommandID      int64       `gorm:"column:command_id" json:"commandId"`
+	CommandInfo    interface{} `gorm:"-" json:"commandInfo" parquet:"-"`
+	CommandInfoStr string      `gorm:"column:command_info" json:"-"`
 	// 这里的RawMsgID 真的什么都有可能
-	RawMsgID    interface{} `gorm:"-"                                                                 json:"rawMsgId"  parquet:"-"`
-	RawMsgIDStr string      `gorm:"column:raw_msg_id;index:idx_raw_msg_id;index:idx_log_delete_by_id,priority:2" json:"-"`
-	UniformID   string      `gorm:"column:user_uniform_id"                                            json:"uniformId"`
+	RawMsgID    interface{} `gorm:"-" json:"rawMsgId" parquet:"-"`
+	RawMsgIDStr string      `gorm:"column:raw_msg_id;index:idx_raw_msg_id" json:"-"`
+	UniformID   string      `gorm:"column:user_uniform_id" json:"uniformId"`
 	// 数据库里没有的
 	Channel string `gorm:"-" json:"channel"`
 	// 数据库里有，JSON里没有的
@@ -112,46 +112,4 @@ type LogInfo struct {
 
 func (*LogInfo) TableName() string {
 	return "logs"
-}
-
-// ADD FROM MYSQL
-
-type LogInfoHookMySQL struct {
-	ID         uint64  `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
-	Name       string  `gorm:"column:name"                        json:"name"`
-	GroupID    string  `gorm:"column:group_id"                    json:"groupId"`
-	CreatedAt  int64   `gorm:"column:created_at"                  json:"createdAt"`
-	UpdatedAt  int64   `gorm:"column:updated_at"                  json:"updatedAt"`
-	Size       *int    `gorm:"<-:false"                           json:"size"`
-	Extra      *string `gorm:"column:extra"                       json:"-"`
-	UploadURL  string  `gorm:"column:upload_url"                  json:"-"`
-	UploadTime int     `gorm:"column:upload_time"                 json:"-"`
-}
-
-func (*LogInfoHookMySQL) TableName() string {
-	return "logs"
-}
-
-type LogOneItemHookMySQL struct {
-	ID             uint64      `gorm:"primaryKey;autoIncrement;column:id;index:idx_log_delete_by_id,priority:3" json:"id"`
-	LogID          uint64      `gorm:"column:log_id"                      json:"-"`
-	GroupID        string      `gorm:"column:group_id;index:idx_log_delete_by_id,priority:1"`
-	Nickname       string      `gorm:"column:nickname"                    json:"nickname"`
-	IMUserID       string      `gorm:"column:im_userid"                   json:"IMUserId"`
-	Time           int64       `gorm:"column:time"                        json:"time"`
-	Message        string      `gorm:"column:message"                     json:"message"`
-	IsDice         bool        `gorm:"column:is_dice"                     json:"isDice"`
-	CommandID      int64       `gorm:"column:command_id"                  json:"commandId"`
-	CommandInfo    interface{} `gorm:"-"                                  json:"commandInfo"`
-	CommandInfoStr string      `gorm:"column:command_info"                json:"-"`
-	RawMsgID       interface{} `gorm:"-"                                  json:"rawMsgId"`
-	RawMsgIDStr    string      `gorm:"column:raw_msg_id;index:idx_log_delete_by_id,priority:2" json:"-"`
-	UniformID      string      `gorm:"column:user_uniform_id"             json:"uniformId"`
-	Channel        string      `gorm:"-"                                  json:"channel"`
-	Removed        *int        `gorm:"column:removed"                     json:"-"`
-	ParentID       *int        `gorm:"column:parent_id"                   json:"-"`
-}
-
-func (*LogOneItemHookMySQL) TableName() string {
-	return "log_items"
 }

@@ -86,3 +86,8 @@ func (js *JSONStore) LoadRecords() ([]upgrade.UpgradeRecord, error) {
 	}
 	return js.data, nil
 }
+
+func (js *JSONStore) PathExists() bool {
+	_, err := os.Stat(js.Path)
+	return err == nil
+}

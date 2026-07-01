@@ -11,6 +11,75 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var legacyServeSchemaSQL = []string{
+	`
+create table if not exists group_player_info
+(
+    id                     INTEGER
+        primary key autoincrement,
+    group_id               TEXT,
+    user_id                TEXT,
+    name                   TEXT,
+    created_at             INTEGER,
+    updated_at             INTEGER,
+    last_command_time      INTEGER,
+    auto_set_name_template TEXT,
+    dice_side_num          TEXT
+);`,
+	`create index if not exists idx_group_player_info_group_id on group_player_info (group_id);`,
+	`create index if not exists idx_group_player_info_user_id on group_player_info (user_id);`,
+	`create unique index if not exists idx_group_player_info_group_user on group_player_info (group_id, user_id);`,
+	`
+create table if not exists group_info
+(
+    id         TEXT primary key,
+    created_at INTEGER,
+    updated_at INTEGER,
+    data       BLOB
+);`,
+	`
+create table if not exists attrs_group
+(
+    id         TEXT primary key,
+    updated_at INTEGER,
+    data       BLOB
+);`,
+	`create index if not exists idx_attrs_group_updated_at on attrs_group (updated_at);`,
+	`create table if not exists attrs_group_user
+(
+    id         TEXT primary key,
+    updated_at INTEGER,
+    data       BLOB
+);`,
+	`create index if not exists idx_attrs_group_user_updated_at on attrs_group_user (updated_at);`,
+	`create table if not exists attrs_user
+(
+    id         TEXT primary key,
+    updated_at INTEGER,
+    data       BLOB
+);`,
+	`create index if not exists idx_attrs_user_updated_at on attrs_user (updated_at);`,
+	`
+create table if not exists ban_info
+(
+    id         TEXT primary key,
+    ban_updated_at INTEGER,
+    updated_at INTEGER,
+    data       BLOB
+);`,
+	`create index if not exists idx_ban_info_updated_at on ban_info (updated_at);`,
+	`create index if not exists idx_ban_info_ban_updated_at on ban_info (ban_updated_at);`,
+}
+
+func EnsureLegacyServeSchema(dbSql *sqlx.DB) error {
+	for _, stmt := range legacyServeSchemaSQL {
+		if _, err := dbSql.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type DeckInfo struct {
 	Enable        bool                 `json:"enable"        yaml:"enable"`
 	Filename      string               `json:"filename"      yaml:"filename"`
@@ -155,70 +224,8 @@ func ConvertServe(dbSql *sqlx.DB) error {
 		return err
 	}
 
-	texts := []string{
-		`
-create table if not exists group_player_info
-(
-    id                     INTEGER
-        primary key autoincrement,
-    group_id               TEXT,
-    user_id                TEXT,
-    name                   TEXT,
-    created_at             INTEGER,
-    updated_at             INTEGER,
-    last_command_time      INTEGER,
-    auto_set_name_template TEXT,
-    dice_side_num          TEXT
-);`,
-		`create index if not exists idx_group_player_info_group_id on group_player_info (group_id);`,
-		`create index if not exists idx_group_player_info_user_id on group_player_info (user_id);`,
-		`create unique index if not exists idx_group_player_info_group_user on group_player_info (group_id, user_id);`,
-		`
-create table if not exists group_info
-(
-    id         TEXT primary key,
-    created_at INTEGER,
-    updated_at INTEGER,
-    data       BLOB
-);`,
-
-		`
-create table if not exists attrs_group
-(
-    id         TEXT primary key,
-    updated_at INTEGER,
-    data       BLOB
-);`,
-		`create index if not exists idx_attrs_group_updated_at on attrs_group (updated_at);`,
-		`create table if not exists attrs_group_user
-(
-    id         TEXT primary key,
-    updated_at INTEGER,
-    data       BLOB
-);`,
-		`create index if not exists idx_attrs_group_user_updated_at on attrs_group_user (updated_at);`,
-		`create table if not exists attrs_user
-(
-    id         TEXT primary key,
-    updated_at INTEGER,
-    data       BLOB
-);`,
-		`create index if not exists idx_attrs_user_updated_at on attrs_user (updated_at);`,
-
-		`
-create table if not exists ban_info
-(
-    id         TEXT primary key,
-    ban_updated_at INTEGER,
-    updated_at INTEGER,
-    data       BLOB
-);`,
-		`create index idx_ban_info_updated_at on ban_info (updated_at);`,
-		`create index idx_ban_info_ban_updated_at on ban_info (ban_updated_at);`,
-	}
-
-	for _, i := range texts {
-		_, _ = dbSql.Exec(i)
+	if err := EnsureLegacyServeSchema(dbSql); err != nil {
+		return err
 	}
 	now := time.Now()
 	nowTimestamp := now.Unix()

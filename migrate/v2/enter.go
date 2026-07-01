@@ -10,13 +10,17 @@ import (
 	v150 "sealdice-core/migrate/v2/v150"
 	v151 "sealdice-core/migrate/v2/v151"
 	v160 "sealdice-core/migrate/v2/v160"
+	"sealdice-core/utils/constant"
 	operator "sealdice-core/utils/dboperator/engine"
 	upgrade "sealdice-core/utils/upgrader"
 	"sealdice-core/utils/upgrader/store"
 )
 
-func InitUpgrader(operator operator.DatabaseOperator) error {
-	storer := store.NewJSONStore("upgrade_metadata.json")
+func newManager(operator operator.DatabaseOperator) *upgrade.Manager {
+	storer, err := store.NewDBStore(operator.GetDataDB(constant.WRITE), "upgrade_metadata.json")
+	if err != nil {
+		panic(err)
+	}
 	mgr := &upgrade.Manager{Store: storer, Database: operator}
 	// V120注册
 	mgr.Register(v120.V120Migration)
@@ -35,9 +39,22 @@ func InitUpgrader(operator operator.DatabaseOperator) error {
 	// v160注册
 	mgr.Register(v160.V160LogIDZeroCleanMigration)
 	mgr.Register(v160.V160LogRawMsgIDIndexMigration)
-	err := mgr.ApplyAll()
-	if err != nil {
-		return err
-	}
-	return nil
+	mgr.Register(v160.V160SQLiteSchemaRepairMigration)
+	return mgr
+}
+
+func HasPreBootstrapPendingSignals(operator operator.DatabaseOperator) (bool, []string, error) {
+	return newManager(operator).HasPendingPhaseSignals(upgrade.PhasePreBootstrap)
+}
+
+func RunPreBootstrapUpgrades(operator operator.DatabaseOperator) error {
+	return newManager(operator).ApplyPhase(upgrade.PhasePreBootstrap)
+}
+
+func RunPostBootstrapUpgrades(operator operator.DatabaseOperator) error {
+	return newManager(operator).ApplyPhase(upgrade.PhasePostBootstrap)
+}
+
+func InitUpgrader(operator operator.DatabaseOperator) error {
+	return newManager(operator).ApplyAll()
 }

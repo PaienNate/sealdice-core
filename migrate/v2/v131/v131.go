@@ -1,12 +1,16 @@
 package v131
 
 import (
+	"os"
+	"strings"
+
 	"sealdice-core/utils/dboperator/engine"
 	upgrade "sealdice-core/utils/upgrader"
 )
 
 var V131ConfigUpdateMigration = upgrade.Upgrade{
-	ID: "003_V131ConfigUpdateMigration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
+	ID:    "003_V131ConfigUpdateMigration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
+	Phase: upgrade.PhasePreBootstrap,
 	Description: `
 # 升级说明
 
@@ -14,6 +18,17 @@ var V131ConfigUpdateMigration = upgrade.Upgrade{
 
 迁移时会保留原始配置值，创建必要的配置结构，并在迁移成功后从原配置文件中删除这些旧项，同时会备份原始自定义文案文件。
 `,
+	ShouldRun: func(_ engine.DatabaseOperator) (bool, error) {
+		data, err := os.ReadFile("./data/default/serve.yaml")
+		if err != nil {
+			return false, nil
+		}
+		text := string(data)
+		return strings.Contains(text, "helpInfo:") ||
+			strings.Contains(text, "useProtocol:") ||
+			strings.Contains(text, "diceExtraText:") ||
+			strings.Contains(text, "deckListInfoText:"), nil
+	},
 	Apply: func(logf func(string), operator engine.DatabaseOperator) error {
 		logf("[INFO] V131配置文件迁移自定义文案转移升级开始")
 		err := V131DeprecatedConfig2CustomText()

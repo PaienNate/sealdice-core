@@ -15,6 +15,63 @@ import (
 	"sealdice-core/logger"
 )
 
+var legacyLogSchemaSQL = []string{
+	`
+create table if not exists logs
+(
+    id         INTEGER  primary key autoincrement,
+    name       TEXT,
+    group_id   TEXT,
+    extra      TEXT,
+    created_at INTEGER,
+    updated_at INTEGER,
+    upload_url TEXT,
+    upload_time INTEGER
+);`,
+	`
+create index if not exists idx_logs_group
+    on logs (group_id);`,
+	`
+create index if not exists idx_logs_update_at
+    on logs (updated_at);`,
+	`
+create unique index if not exists idx_log_group_id_name
+    on logs (group_id, name);`,
+	`
+create table if not exists log_items
+(
+    id              INTEGER primary key autoincrement,
+    log_id          INTEGER,
+    group_id        TEXT,
+    nickname        TEXT,
+    im_userid       TEXT,
+    time            INTEGER,
+    message         TEXT,
+    is_dice         INTEGER,
+    command_id      INTEGER,
+    command_info    TEXT,
+    raw_msg_id      TEXT,
+    user_uniform_id TEXT,
+    removed         INTEGER,
+    parent_id       INTEGER
+);`,
+	`
+create index if not exists idx_log_items_group_id
+    on log_items (log_id);`,
+	`
+create index if not exists idx_log_items_log_id
+    on log_items (log_id);`,
+}
+
+func EnsureLegacyLogSchema(dbSQL *sqlx.DB) error {
+	for _, stmt := range legacyLogSchemaSQL {
+		if _, err := dbSQL.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type LogOneItem struct {
 	ID          uint64      `json:"id"`
 	Nickname    string      `json:"nickname"`
@@ -303,56 +360,8 @@ func itob(v uint64) []byte {
 func ConvertLogs(dbSQL *sqlx.DB) error {
 	log := zap.S().Named(logger.LogKeyDatabase)
 
-	texts := []string{
-		`
-create table if not exists logs
-(
-    id         INTEGER  primary key autoincrement,
-    name       TEXT,
-    group_id   TEXT,
-    extra      TEXT,
-    created_at INTEGER,
-    updated_at INTEGER,
-    upload_url TEXT,
-    upload_time INTEGER
-);`,
-		`
-create index if not exists idx_logs_group
-    on logs (group_id);`,
-		`
-create index if not exists idx_logs_update_at
-    on logs (updated_at);`,
-		`
-create unique index if not exists idx_log_group_id_name
-    on logs (group_id, name);`,
-		`
-create table if not exists log_items
-(
-    id              INTEGER primary key autoincrement,
-    log_id          INTEGER,
-    group_id        TEXT,
-    nickname        TEXT,
-    im_userid       TEXT,
-    time            INTEGER,
-    message         TEXT,
-    is_dice         INTEGER,
-    command_id      INTEGER,
-    command_info    TEXT,
-    raw_msg_id      TEXT,
-    user_uniform_id TEXT,
-    removed         INTEGER,
-    parent_id       INTEGER
-);`,
-		`
-create index if not exists idx_log_items_group_id
-    on log_items (log_id);`,
-		`
-create index if not exists idx_log_items_log_id
-    on log_items (log_id);`,
-	}
-
-	for _, i := range texts {
-		_, _ = dbSQL.Exec(i)
+	if err := EnsureLegacyLogSchema(dbSQL); err != nil {
+		return err
 	}
 
 	// 加载数据

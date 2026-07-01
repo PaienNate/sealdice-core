@@ -72,11 +72,28 @@ func V160LogIDZeroCleanMigrate(dboperator operator.DatabaseOperator, logf func(s
 }
 
 var V160LogIDZeroCleanMigration = upgrade.Upgrade{
-	ID: "008_V160LogIDZeroCleanMigration",
+	ID:    "008_V160LogIDZeroCleanMigration",
+	Phase: upgrade.PhasePostBootstrap,
 	Description: `
 # 升级说明
 清理 log_id = 0 的错误日志数据
 `,
+	ShouldRun: func(dbOperator operator.DatabaseOperator) (bool, error) {
+		db := dbOperator.GetLogDB(constant.READ)
+		migrator := db.Migrator()
+		if !migrator.HasTable(&model.LogInfo{}) || !migrator.HasTable(&model.LogOneItem{}) {
+			return false, nil
+		}
+		var hasLogIDZeroInt int64
+		if err := db.Raw("SELECT EXISTS(SELECT 1 FROM logs WHERE id = 0 LIMIT 1)").Scan(&hasLogIDZeroInt).Error; err != nil {
+			return false, err
+		}
+		var hasItemLogIDZeroInt int64
+		if err := db.Raw("SELECT EXISTS(SELECT 1 FROM log_items WHERE log_id = 0 LIMIT 1)").Scan(&hasItemLogIDZeroInt).Error; err != nil {
+			return false, err
+		}
+		return hasLogIDZeroInt != 0 || hasItemLogIDZeroInt != 0, nil
+	},
 	Apply: func(logf func(string), dbOperator operator.DatabaseOperator) error {
 		logf("[INFO] V160清理log_id=0数据开始")
 		err := V160LogIDZeroCleanMigrate(dbOperator, logf)

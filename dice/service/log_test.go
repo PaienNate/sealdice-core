@@ -25,6 +25,7 @@ type logInfoTestOperator struct {
 }
 
 func (o *logInfoTestOperator) Init(_ context.Context) error           { return nil }
+func (o *logInfoTestOperator) BootstrapSchema() error                 { return nil }
 func (o *logInfoTestOperator) Type() string                           { return o.dbType }
 func (o *logInfoTestOperator) DBCheck()                               {}
 func (o *logInfoTestOperator) GetDataDB(_ constant.DBMode) *gorm.DB   { return o.db }
@@ -438,7 +439,7 @@ func TestLogEditByRawMsgIDUsesLatestDuplicateInGroup(t *testing.T) {
 	}
 }
 
-func TestLogModelCreatesCompositeRawMsgIDIndexOnSQLite(t *testing.T) {
+func TestLogModelDoesNotCreateCompositeRawMsgIDIndexOnSQLite(t *testing.T) {
 	db := newLogInfoTestDB(t)
 
 	type sqliteIndexInfo struct {
@@ -450,17 +451,9 @@ func TestLogModelCreatesCompositeRawMsgIDIndexOnSQLite(t *testing.T) {
 		t.Fatalf("query sqlite indexes: %v", err)
 	}
 
-	var found bool
 	for _, idx := range indexes {
-		if idx.Name != "idx_log_delete_by_id" {
-			continue
+		if idx.Name == "idx_log_delete_by_id" {
+			t.Fatalf("unexpected bootstrap/model-created idx_log_delete_by_id: %q", idx.SQL)
 		}
-		found = true
-		if !regexp.MustCompile("(?i)[(`]?group_id[)`]?,\\s*[(`]?raw_msg_id[)`]?,\\s*[(`]?id[)`]?").MatchString(idx.SQL) {
-			t.Fatalf("idx_log_delete_by_id sql = %q, want composite (group_id, raw_msg_id, id)", idx.SQL)
-		}
-	}
-	if !found {
-		t.Fatal("expected idx_log_delete_by_id to exist on log_items")
 	}
 }

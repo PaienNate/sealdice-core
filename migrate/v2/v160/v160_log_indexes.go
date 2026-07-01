@@ -17,7 +17,7 @@ func V160LogRawMsgIDIndexMigrate(dboperator operator.DatabaseOperator, logf func
 
 	switch dboperator.Type() {
 	case constant.MYSQL:
-		if !db.Migrator().HasIndex(&model.LogOneItemHookMySQL{}, "idx_log_delete_by_id") {
+		if !db.Migrator().HasIndex(&model.LogOneItem{}, "idx_log_delete_by_id") {
 			if err := db.Exec("CREATE INDEX idx_log_delete_by_id ON log_items(group_id(20), raw_msg_id(20), id)").Error; err != nil {
 				return err
 			}
@@ -40,11 +40,19 @@ func V160LogRawMsgIDIndexMigrate(dboperator operator.DatabaseOperator, logf func
 }
 
 var V160LogRawMsgIDIndexMigration = upgrade.Upgrade{
-	ID: "008a_V160LogRawMsgIDIndexMigration",
+	ID:    "008a_V160LogRawMsgIDIndexMigration",
+	Phase: upgrade.PhasePostBootstrap,
 	Description: `
 # 升级说明
 为日志消息回查补齐(group_id, raw_msg_id, id)复合索引
 `,
+	ShouldRun: func(operator operator.DatabaseOperator) (bool, error) {
+		db := operator.GetLogDB(constant.READ)
+		if !db.Migrator().HasTable(&model.LogOneItem{}) {
+			return false, nil
+		}
+		return !db.Migrator().HasIndex(&model.LogOneItem{}, "idx_log_delete_by_id"), nil
+	},
 	Apply: func(logf func(string), operator operator.DatabaseOperator) error {
 		logf(fmt.Sprintf("[INFO] V160日志索引修复开始 type=%s", operator.Type()))
 		err := V160LogRawMsgIDIndexMigrate(operator, logf)

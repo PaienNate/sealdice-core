@@ -9,7 +9,7 @@ import (
 	"sealdice-core/utils/constant"
 )
 
-func TestBootstrapSchemaCreatesCoreSQLiteTables(t *testing.T) {
+func TestBootstrapSchemaCreatesPatchLogOnly(t *testing.T) {
 	dataDir := t.TempDir()
 	t.Setenv("DATADIR", dataDir)
 
@@ -39,9 +39,15 @@ func TestBootstrapSchemaCreatesCoreSQLiteTables(t *testing.T) {
 		}
 	}
 
-	checkHasTable(func() bool { return engine.GetDataDB(constant.WRITE).Migrator().HasTable("attrs") }, "attrs")
-	checkHasTable(func() bool { return engine.GetDataDB(constant.WRITE).Migrator().HasTable("group_info") }, "group_info")
-	checkHasTable(func() bool { return engine.GetLogDB(constant.WRITE).Migrator().HasTable("logs") }, "logs")
-	checkHasTable(func() bool { return engine.GetLogDB(constant.WRITE).Migrator().HasTable("log_items") }, "log_items")
-	checkHasTable(func() bool { return engine.GetCensorDB(constant.WRITE).Migrator().HasTable("censor_log") }, "censor_log")
+	checkHasTable(func() bool { return engine.GetDataDB(constant.WRITE).Migrator().HasTable("sys_patch_log") }, "sys_patch_log")
+	checkHasTable(func() bool { return engine.GetLogDB(constant.WRITE).Migrator().HasTable("sys_patch_log") }, "sys_patch_log")
+	checkHasTable(func() bool { return engine.GetCensorDB(constant.WRITE).Migrator().HasTable("sys_patch_log") }, "sys_patch_log")
+
+	for _, table := range []string{"attrs", "group_info", "logs", "log_items", "censor_log"} {
+		if engine.GetDataDB(constant.WRITE).Migrator().HasTable(table) ||
+			engine.GetLogDB(constant.WRITE).Migrator().HasTable(table) ||
+			engine.GetCensorDB(constant.WRITE).Migrator().HasTable(table) {
+			t.Fatalf("did not expect business table %s to exist", table)
+		}
+	}
 }

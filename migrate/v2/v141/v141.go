@@ -1,12 +1,16 @@
 package v141
 
 import (
+	"os"
+	"strings"
+
 	"sealdice-core/utils/dboperator/engine"
 	upgrade "sealdice-core/utils/upgrader"
 )
 
 var V141ConfigUpdateMigration = upgrade.Upgrade{
-	ID: "004_V141ConfigUpdateMigration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
+	ID:    "004_V141ConfigUpdateMigration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
+	Phase: upgrade.PhasePreBootstrap,
 	Description: `
 # 升级说明
 
@@ -17,6 +21,14 @@ var V141ConfigUpdateMigration = upgrade.Upgrade{
 
 如果配置文件不存在，则直接跳过；否则读取文件内容，解析为 YAML，检查并替换旧字段名，最后将修改后的配置写回文件。整个过程确保向后兼容性，同时更新配置结构。
 `,
+	ShouldRun: func(_ engine.DatabaseOperator) (bool, error) {
+		data, err := os.ReadFile("./data/default/serve.yaml")
+		if err != nil {
+			return false, nil
+		}
+		text := string(data)
+		return strings.Contains(text, "customReplenishRate:") || strings.Contains(text, "customBurst:"), nil
+	},
 	Apply: func(logf func(string), operator engine.DatabaseOperator) error {
 		logf("[INFO] V141已弃用配置项进行重命名升级开始")
 		err := V141DeprecatedConfigRename()

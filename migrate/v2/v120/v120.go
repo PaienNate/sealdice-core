@@ -2,6 +2,7 @@ package v120
 
 import (
 	"os"
+	"regexp"
 
 	"sealdice-core/utils"
 	"sealdice-core/utils/constant"
@@ -10,7 +11,8 @@ import (
 )
 
 var V120Migration = upgrade.Upgrade{
-	ID: "001_V120Migration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
+	ID:    "001_V120Migration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
+	Phase: upgrade.PhasePreBootstrap,
 	Description: `
 ### 🆕 升级说明
 
@@ -30,12 +32,40 @@ var V120Migration = upgrade.Upgrade{
 - 提供完整的数据迁移逻辑，实现历史日志的平滑过渡；
 - 为后续实现日志管理、检索与上传等功能奠定基础。
 `,
+	ShouldRun: func(operator engine.DatabaseOperator) (bool, error) {
+		if _, err := os.Stat("./data/default/data.bdb"); err == nil {
+			return true, nil
+		}
+
+		dataDB, err := utils.GetSQLXDB(operator.GetDataDB(constant.WRITE))
+		if err != nil {
+			return false, err
+		}
+		logDB, err := utils.GetSQLXDB(operator.GetLogDB(constant.WRITE))
+		if err != nil {
+			return false, err
+		}
+
+		var dataCount int
+		if err := dataDB.Get(&dataCount, `
+SELECT
+	(SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name IN ('group_player_info','group_info','attrs_group','attrs_group_user','attrs_user','ban_info'))
+`); err == nil && dataCount == 0 {
+			return true, nil
+		}
+
+		var logCount int
+		if err := logDB.Get(&logCount, `
+SELECT
+	(SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name IN ('logs','log_items'))
+`); err == nil && logCount == 0 {
+			return true, nil
+		}
+
+		return false, nil
+	},
 	Apply: func(logf func(string), operator engine.DatabaseOperator) error {
 		logf("[INFO] 尝试检查是否为V120版本升级到新版本")
-		if _, err := os.Stat("./data/default/data.bdb"); err != nil {
-			logf("[INFO] V120升级已经被应用过或版本为新版本，无需应用升级")
-			return nil // 没有旧数据库，无需迁移
-		}
 		// 尝试升级 TODO: 历史遗留的SQLX，如果改动怕升级失败，不改动吧又看不到日志
 		dataDB, err := utils.GetSQLXDB(operator.GetDataDB(constant.WRITE))
 		if err != nil {
@@ -45,21 +75,46 @@ var V120Migration = upgrade.Upgrade{
 		if err != nil {
 			return err
 		}
-		err = ConvertServe(dataDB)
-		if err != nil {
+		if _, statErr := os.Stat("./data/default/data.bdb"); statErr == nil {
+			err = ConvertServe(dataDB)
+			if err != nil {
+				return err
+			}
+			err = ConvertLogs(logDB)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		if err := EnsureLegacyServeSchema(dataDB); err != nil {
 			return err
 		}
-		err = ConvertLogs(logDB)
-		if err != nil {
-			return err
-		}
-		return nil
+		return EnsureLegacyLogSchema(logDB)
 	},
 }
 
 var V120LogMessageMigration = upgrade.Upgrade{
-	ID:          "002_V120LogMessageMigration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
+	ID:    "002_V120LogMessageMigration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
+	Phase: upgrade.PhasePostBootstrap,
 	Description: "V120到V131内，有一个被应用的数据库修正，旨在将错误的message字段类型修改为正确的",
+	ShouldRun: func(operator engine.DatabaseOperator) (bool, error) {
+		if operator.Type() != "sqlite" {
+			return false, nil
+		}
+		logDB, err := utils.GetSQLXDB(operator.GetLogDB(constant.WRITE))
+		if err != nil {
+			return false, err
+		}
+		if _, err = os.Stat("./data/default/data-logs.db"); err != nil {
+			return false, nil
+		}
+		var logItemSQL []string
+		err = logDB.Select(&logItemSQL, "SELECT sql FROM sqlite_master WHERE type='table' AND name='log_items';")
+		if err != nil || len(logItemSQL) != 1 {
+			return false, err
+		}
+		return regexp.MustCompile(`message\s+INTEGER,`).MatchString(logItemSQL[0]), nil
+	},
 	Apply: func(logf func(string), operator engine.DatabaseOperator) error {
 		logf("[INFO] 尝试检查数据库状态")
 		if operator.Type() != "sqlite" {

@@ -1,10 +1,7 @@
 package v150
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -13,7 +10,6 @@ import (
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	gormLogger "gorm.io/gorm/logger"
 
 	"sealdice-core/dice"
 	"sealdice-core/dice/service"
@@ -532,6 +528,32 @@ func dataDBInit(dboperator operator.DatabaseOperator, logf func(string)) error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+	if !writeDB.Migrator().HasTable("attrs") {
+		if err := writeDB.Exec(`
+CREATE TABLE IF NOT EXISTS attrs (
+	id TEXT PRIMARY KEY,
+	data BLOB,
+	attrs_type TEXT DEFAULT NULL,
+	binding_sheet_id TEXT DEFAULT '',
+	name TEXT DEFAULT '',
+	owner_id TEXT DEFAULT '',
+	sheet_type TEXT DEFAULT '',
+	is_hidden BOOLEAN DEFAULT FALSE,
+	created_at INTEGER DEFAULT 0,
+	updated_at INTEGER DEFAULT 0
+)`).Error; err != nil {
+			return err
+		}
+	}
+	for _, stmt := range []string{
+		"CREATE INDEX IF NOT EXISTS idx_attrs_attrs_type_id ON attrs (attrs_type)",
+		"CREATE INDEX IF NOT EXISTS idx_attrs_binding_sheet_id ON attrs (binding_sheet_id)",
+		"CREATE INDEX IF NOT EXISTS idx_attrs_owner_id_id ON attrs (owner_id)",
+	} {
+		if err := writeDB.Exec(stmt).Error; err != nil {
+			return err
 		}
 	}
 	logf("DataDB 兼容修复完成")

@@ -150,6 +150,31 @@ func fixTimezone() {
 	time.Local = z //nolint:reassign // old code
 }
 
+func runDatabaseUpgradePipeline(
+	hasPreSignals func() (bool, []string, error),
+	runPre func() error,
+	bootstrapSchema func() error,
+	runPost func() error,
+	warnf func(string, ...interface{}),
+) error {
+	hasPending, matched, err := hasPreSignals()
+	if err != nil {
+		return err
+	}
+	if hasPending {
+		if err = runPre(); err != nil && warnf != nil {
+			warnf("预启动升级流程出现问题，将继续后续初始化。命中的升级: %v, 错误: %v", matched, err)
+		}
+	}
+	if err = bootstrapSchema(); err != nil {
+		return err
+	}
+	if err = runPost(); err != nil && warnf != nil {
+		warnf("启动后升级流程出现问题，请检查，问题为: %v", err)
+	}
+	return nil
+}
+
 func main() {
 	var opts struct {
 		Version                bool   `description:"显示版本号"                                                           long:"version"`
@@ -251,8 +276,14 @@ func main() {
 		log.Errorf("Failed to init database: %v", err)
 		return
 	}
-	if err = dboperator.BootstrapDatabaseSchema(); err != nil {
-		log.Errorf("Failed to bootstrap database schema: %v", err)
+	if err = runDatabaseUpgradePipeline(
+		func() (bool, []string, error) { return v2.HasPreBootstrapPendingSignals(operator) },
+		func() error { return v2.RunPreBootstrapUpgrades(operator) },
+		dboperator.BootstrapDatabaseSchema,
+		func() error { return v2.RunPostBootstrapUpgrades(operator) },
+		log.Warnf,
+	); err != nil {
+		log.Errorf("Failed to initialize database upgrade pipeline: %v", err)
 		return
 	}
 	diceManager := &dice.DiceManager{
@@ -385,39 +416,6 @@ func main() {
 		useBuiltinUI = true
 	} else {
 		log.Info("检测到外置的UI资源文件，将使用frontend_overwrite文件夹内的资源启动UI")
-	}
-
-	// // 尝试进行升级
-	// migrate.TryMigrateToV12()
-	// // 尝试修正log_items表的message字段类型
-	// if migrateErr := migrate.LogItemFixDatatype(); migrateErr != nil {
-	//	log.Fatalf("修正log_items表时出错，%s", migrateErr.Error())
-	//	return
-	// }
-	// // v131迁移历史设置项到自定义文案
-	// if migrateErr := migrate.V131DeprecatedConfig2CustomText(); migrateErr != nil {
-	//	log.Fatalf("迁移历史设置项时出错，%s", migrateErr.Error())
-	//	return
-	// }
-	// // v141重命名刷屏警告字段
-	// if migrateErr := migrate.V141DeprecatedConfigRename(); migrateErr != nil {
-	//	log.Fatalf("迁移历史设置项时出错，%s", migrateErr.Error())
-	//	return
-	// }
-	// // v144删除旧的帮助文档
-	// if migrateErr := migrate.V144RemoveOldHelpdoc(); migrateErr != nil {
-	//	log.Fatalf("移除旧帮助文档时出错，%v", migrateErr)
-	// }
-	// // v150升级
-	// err = migrate.V150Upgrade()
-	// if err != nil {
-	//	// Fatalf将会退出程序...或许应该用Errorf一类的吗？
-	//	log.Fatalf("您的146数据库可能存在问题，为保护数据，已经停止执行150升级命令。请尝试联系开发者，并提供你的日志。\n"+
-	//		"数据已回滚，您可暂时使用旧版本等待进一步的修复和更新。您的报错内容为: %v", err)
-	// }
-	err = v2.InitUpgrader(operator)
-	if err != nil {
-		log.Warnf("升级流程出现问题，请检查，问题为: %v", err)
 	}
 
 	if !opts.ShowConsole || opts.MultiInstanceOnWindows {
