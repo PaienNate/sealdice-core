@@ -94,8 +94,8 @@ SELECT
 }
 
 var V120LogMessageMigration = upgrade.Upgrade{
-	ID:    "002_V120LogMessageMigration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
-	Phase: upgrade.PhasePostBootstrap,
+	ID:          "002_V120LogMessageMigration", // TODO：需要合理的生成逻辑，这个等提交了PR再后续讨论
+	Phase:       upgrade.PhasePostBootstrap,
 	Description: "V120到V131内，有一个被应用的数据库修正，旨在将错误的message字段类型修改为正确的",
 	ShouldRun: func(operator engine.DatabaseOperator) (bool, error) {
 		if operator.Type() != "sqlite" {

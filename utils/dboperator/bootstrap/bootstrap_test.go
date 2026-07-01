@@ -1,4 +1,4 @@
-package bootstrap
+package bootstrap_test
 
 import (
 	"path/filepath"
@@ -7,6 +7,8 @@ import (
 	gormsqlite "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
+
+	"sealdice-core/utils/dboperator/bootstrap"
 )
 
 func openBootstrapSQLiteTestDB(t *testing.T) *gorm.DB {
@@ -30,34 +32,6 @@ func openBootstrapSQLiteTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func loadTableSQL(t *testing.T, db *gorm.DB, table string) string {
-	t.Helper()
-
-	var row struct {
-		SQL string `gorm:"column:sql"`
-	}
-	if err := db.Raw(
-		"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
-		table,
-	).Scan(&row).Error; err != nil {
-		t.Fatalf("load sqlite_master for %s: %v", table, err)
-	}
-	return row.SQL
-}
-
-func countIndexes(t *testing.T, db *gorm.DB, table string) int64 {
-	t.Helper()
-
-	var count int64
-	if err := db.Raw(
-		"SELECT COUNT(1) AS count FROM sqlite_master WHERE type = 'index' AND tbl_name = ?",
-		table,
-	).Scan(&count).Error; err != nil {
-		t.Fatalf("count indexes for %s: %v", table, err)
-	}
-	return count
-}
-
 func TestPackageBuildsWithoutHookModels(t *testing.T) {
 	// The package compiles only if bootstrap no longer depends on the removed
 	// HookMySQL models.
@@ -66,7 +40,7 @@ func TestPackageBuildsWithoutHookModels(t *testing.T) {
 func TestSQLiteDataDBCreatesOnlyPatchLogTable(t *testing.T) {
 	db := openBootstrapSQLiteTestDB(t)
 
-	if err := DataDB("sqlite", db); err != nil {
+	if err := bootstrap.DataDB("sqlite", db); err != nil {
 		t.Fatalf("DataDB(sqlite) error = %v", err)
 	}
 
@@ -93,7 +67,7 @@ func TestSQLiteDataDBCreatesOnlyPatchLogTable(t *testing.T) {
 func TestSQLiteLogDBCreatesOnlyPatchLogTable(t *testing.T) {
 	db := openBootstrapSQLiteTestDB(t)
 
-	if err := LogDB("sqlite", db); err != nil {
+	if err := bootstrap.LogDB("sqlite", db); err != nil {
 		t.Fatalf("LogDB(sqlite) error = %v", err)
 	}
 

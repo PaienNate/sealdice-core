@@ -1,4 +1,4 @@
-package v160
+package v160_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
+	v160 "sealdice-core/migrate/v2/v160"
 	"sealdice-core/utils/constant"
 	operator "sealdice-core/utils/dboperator/engine"
 )
@@ -117,7 +118,7 @@ CREATE TABLE log_items (
 	}
 
 	op := &sqliteSchemaRepairTestOperator{dataDB: dataDB, logDB: logDB}
-	if err := V160SQLiteSchemaRepairMigrate(op, func(string) {}); err != nil {
+	if err := v160.V160SQLiteSchemaRepairMigrate(op, func(string) {}); err != nil {
 		t.Fatalf("V160SQLiteSchemaRepairMigrate() error = %v", err)
 	}
 

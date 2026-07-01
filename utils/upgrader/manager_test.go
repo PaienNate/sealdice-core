@@ -1,4 +1,4 @@
-package upgrade
+package upgrade_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 	"sealdice-core/utils/constant"
 	operator "sealdice-core/utils/dboperator/engine"
+	upgrade "sealdice-core/utils/upgrader"
 )
 
 type managerTestOperator struct{}
@@ -25,20 +26,20 @@ func (o *managerTestOperator) Close()                                 {}
 
 type managerTestStore struct {
 	applied map[string]bool
-	records []UpgradeRecord
+	records []upgrade.UpgradeRecord
 }
 
 func (s *managerTestStore) IsApplied(id string) (bool, error) {
 	return s.applied[id], nil
 }
 
-func (s *managerTestStore) SaveRecord(record UpgradeRecord) error {
+func (s *managerTestStore) SaveRecord(record upgrade.UpgradeRecord) error {
 	s.records = append(s.records, record)
 	return nil
 }
 
-func (s *managerTestStore) LoadRecords() ([]UpgradeRecord, error) {
-	return append([]UpgradeRecord(nil), s.records...), nil
+func (s *managerTestStore) LoadRecords() ([]upgrade.UpgradeRecord, error) {
+	return append([]upgrade.UpgradeRecord(nil), s.records...), nil
 }
 
 func TestManagerApplyPhaseRunsOnlyMatchingPhaseWithSignals(t *testing.T) {
@@ -46,10 +47,10 @@ func TestManagerApplyPhaseRunsOnlyMatchingPhaseWithSignals(t *testing.T) {
 	op := &managerTestOperator{}
 	var executed []string
 
-	mgr := &Manager{Store: store, Database: op}
-	mgr.Register(Upgrade{
+	mgr := &upgrade.Manager{Store: store, Database: op}
+	mgr.Register(upgrade.Upgrade{
 		ID:    "002_post",
-		Phase: PhasePostBootstrap,
+		Phase: upgrade.PhasePostBootstrap,
 		ShouldRun: func(_ operator.DatabaseOperator) (bool, error) {
 			return true, nil
 		},
@@ -59,9 +60,9 @@ func TestManagerApplyPhaseRunsOnlyMatchingPhaseWithSignals(t *testing.T) {
 			return nil
 		},
 	})
-	mgr.Register(Upgrade{
+	mgr.Register(upgrade.Upgrade{
 		ID:    "001_pre",
-		Phase: PhasePreBootstrap,
+		Phase: upgrade.PhasePreBootstrap,
 		ShouldRun: func(_ operator.DatabaseOperator) (bool, error) {
 			return true, nil
 		},
@@ -71,9 +72,9 @@ func TestManagerApplyPhaseRunsOnlyMatchingPhaseWithSignals(t *testing.T) {
 			return nil
 		},
 	})
-	mgr.Register(Upgrade{
+	mgr.Register(upgrade.Upgrade{
 		ID:    "003_pre_skip",
-		Phase: PhasePreBootstrap,
+		Phase: upgrade.PhasePreBootstrap,
 		ShouldRun: func(_ operator.DatabaseOperator) (bool, error) {
 			return false, nil
 		},
@@ -83,7 +84,7 @@ func TestManagerApplyPhaseRunsOnlyMatchingPhaseWithSignals(t *testing.T) {
 		},
 	})
 
-	if err := mgr.ApplyPhase(PhasePreBootstrap); err != nil {
+	if err := mgr.ApplyPhase(upgrade.PhasePreBootstrap); err != nil {
 		t.Fatalf("ApplyPhase(PreBootstrap) error = %v", err)
 	}
 
@@ -99,11 +100,11 @@ func TestManagerApplyPhaseRunsOnlyMatchingPhaseWithSignals(t *testing.T) {
 func TestManagerApplyPhaseSkipsMetadataAppliedEvenIfSignalStillExists(t *testing.T) {
 	store := &managerTestStore{applied: map[string]bool{"001_pre": true}}
 	op := &managerTestOperator{}
-	mgr := &Manager{Store: store, Database: op}
+	mgr := &upgrade.Manager{Store: store, Database: op}
 
-	mgr.Register(Upgrade{
+	mgr.Register(upgrade.Upgrade{
 		ID:    "001_pre",
-		Phase: PhasePreBootstrap,
+		Phase: upgrade.PhasePreBootstrap,
 		ShouldRun: func(_ operator.DatabaseOperator) (bool, error) {
 			return true, nil
 		},
@@ -113,7 +114,7 @@ func TestManagerApplyPhaseSkipsMetadataAppliedEvenIfSignalStillExists(t *testing
 		},
 	})
 
-	if err := mgr.ApplyPhase(PhasePreBootstrap); err != nil {
+	if err := mgr.ApplyPhase(upgrade.PhasePreBootstrap); err != nil {
 		t.Fatalf("ApplyPhase(PreBootstrap) error = %v", err)
 	}
 	if len(store.records) != 0 {
@@ -124,12 +125,12 @@ func TestManagerApplyPhaseSkipsMetadataAppliedEvenIfSignalStillExists(t *testing
 func TestManagerApplyPhaseSavesFailureRecordAndStops(t *testing.T) {
 	store := &managerTestStore{applied: map[string]bool{}}
 	op := &managerTestOperator{}
-	mgr := &Manager{Store: store, Database: op}
+	mgr := &upgrade.Manager{Store: store, Database: op}
 
 	boom := errors.New("boom")
-	mgr.Register(Upgrade{
+	mgr.Register(upgrade.Upgrade{
 		ID:    "001_pre",
-		Phase: PhasePreBootstrap,
+		Phase: upgrade.PhasePreBootstrap,
 		ShouldRun: func(_ operator.DatabaseOperator) (bool, error) {
 			return true, nil
 		},
@@ -139,7 +140,7 @@ func TestManagerApplyPhaseSavesFailureRecordAndStops(t *testing.T) {
 		},
 	})
 
-	err := mgr.ApplyPhase(PhasePreBootstrap)
+	err := mgr.ApplyPhase(upgrade.PhasePreBootstrap)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -154,38 +155,38 @@ func TestManagerApplyPhaseSavesFailureRecordAndStops(t *testing.T) {
 func TestManagerDetectsPhaseSignals(t *testing.T) {
 	store := &managerTestStore{applied: map[string]bool{"002_pre_done": true}}
 	op := &managerTestOperator{}
-	mgr := &Manager{Store: store, Database: op}
+	mgr := &upgrade.Manager{Store: store, Database: op}
 
-	mgr.Register(Upgrade{
+	mgr.Register(upgrade.Upgrade{
 		ID:    "001_pre",
-		Phase: PhasePreBootstrap,
+		Phase: upgrade.PhasePreBootstrap,
 		ShouldRun: func(_ operator.DatabaseOperator) (bool, error) {
 			return false, nil
 		},
 	})
-	mgr.Register(Upgrade{
+	mgr.Register(upgrade.Upgrade{
 		ID:    "002_pre_done",
-		Phase: PhasePreBootstrap,
+		Phase: upgrade.PhasePreBootstrap,
 		ShouldRun: func(_ operator.DatabaseOperator) (bool, error) {
 			return true, nil
 		},
 	})
-	mgr.Register(Upgrade{
+	mgr.Register(upgrade.Upgrade{
 		ID:    "003_pre_need",
-		Phase: PhasePreBootstrap,
+		Phase: upgrade.PhasePreBootstrap,
 		ShouldRun: func(_ operator.DatabaseOperator) (bool, error) {
 			return true, nil
 		},
 	})
-	mgr.Register(Upgrade{
+	mgr.Register(upgrade.Upgrade{
 		ID:    "004_post_need",
-		Phase: PhasePostBootstrap,
+		Phase: upgrade.PhasePostBootstrap,
 		ShouldRun: func(_ operator.DatabaseOperator) (bool, error) {
 			return true, nil
 		},
 	})
 
-	hasSignals, matched, err := mgr.HasPendingPhaseSignals(PhasePreBootstrap)
+	hasSignals, matched, err := mgr.HasPendingPhaseSignals(upgrade.PhasePreBootstrap)
 	if err != nil {
 		t.Fatalf("HasPendingPhaseSignals() error = %v", err)
 	}

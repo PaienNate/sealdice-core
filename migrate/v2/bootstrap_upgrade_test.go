@@ -1,4 +1,4 @@
-package v2
+package v2_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
+	v2 "sealdice-core/migrate/v2"
 	v120 "sealdice-core/migrate/v2/v120"
 	"sealdice-core/model"
 	"sealdice-core/utils/constant"
@@ -116,8 +117,8 @@ func writeLegacyV120Files(t *testing.T, root string) {
 		if err != nil {
 			return err
 		}
-		if err := logBucket.Put([]byte{0, 0, 0, 0, 0, 0, 0, 1}, rawItem); err != nil {
-			return err
+		if putErr := logBucket.Put([]byte{0, 0, 0, 0, 0, 0, 0, 1}, rawItem); putErr != nil {
+			return putErr
 		}
 
 		attrsUser, err := tx.CreateBucketIfNotExists([]byte("attrs_user"))
@@ -209,7 +210,7 @@ func TestHasPreBootstrapPendingSignalsDetectsV120LegacyArtifacts(t *testing.T) {
 	logDB := openBootstrapUpgradeSQLiteDB(t, filepath.Join(root, "data", "default", "data-logs.db"))
 	op := &bootstrapUpgradeTestOperator{dataDB: dataDB, logDB: logDB}
 
-	hasPending, matched, err := HasPreBootstrapPendingSignals(op)
+	hasPending, matched, err := v2.HasPreBootstrapPendingSignals(op)
 	if err != nil {
 		t.Fatalf("HasPreBootstrapPendingSignals() error = %v", err)
 	}
@@ -240,7 +241,7 @@ func TestInitUpgraderBuildsBusinessSchemaForFreshDatabase(t *testing.T) {
 		t.Fatalf("bootstrap.LogDB(): %v", err)
 	}
 
-	if err := InitUpgrader(op); err != nil {
+	if err := v2.InitUpgrader(op); err != nil {
 		t.Fatalf("InitUpgrader() error = %v", err)
 	}
 

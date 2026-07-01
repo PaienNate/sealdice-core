@@ -1,4 +1,4 @@
-package v150
+package v150_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 	"sealdice-core/dice"
 	"sealdice-core/dice/service"
+	v150 "sealdice-core/migrate/v2/v150"
 	"sealdice-core/model"
 	"sealdice-core/utils/constant"
 	"sealdice-core/utils/dboperator/bootstrap"
@@ -102,7 +103,7 @@ CREATE TABLE attrs_group (
 		"$ch:Hero": dice.VMValueNew(dice.VMTypeString, mustJSONStringValueMap(t, map[string]*dice.VMValue{
 			"hp": dice.VMValueNew(dice.VMTypeInt64, int64(12)),
 		})),
-		"$mstr":                      dice.VMValueNew(dice.VMTypeString, "value"),
+		"$mstr": dice.VMValueNew(dice.VMTypeString, "value"),
 	})
 	groupUserData := mustJSONValueMap(t, map[string]*dice.VMValue{
 		"$:cardBindMark": dice.VMValueNew(dice.VMTypeString, "Hero"),
@@ -133,7 +134,7 @@ CREATE TABLE attrs_group (
 	}
 
 	op := &v150BootstrapTestOperator{dataDB: dataDB, logDB: logDB}
-	if err := V150AttrsMigrate(op, func(string) {}); err != nil {
+	if err := v150.V150AttrsMigrate(op, func(string) {}); err != nil {
 		t.Fatalf("V150AttrsMigrate() error = %v", err)
 	}
 
@@ -183,15 +184,15 @@ CREATE TABLE attrs_user (
 	}
 
 	op := &v150BootstrapTestOperator{dataDB: dataDB, logDB: logDB}
-	shouldRun, err := V150UpgradeAttrsMigration.ShouldRun(op)
+	shouldRun, err := v150.V150UpgradeAttrsMigration.ShouldRun(op)
 	if err != nil {
 		t.Fatalf("ShouldRun() error = %v", err)
 	}
 	if !shouldRun {
 		t.Fatal("expected legacy attrs tables to trigger pre-bootstrap migration")
 	}
-	if V150UpgradeAttrsMigration.Phase != upgrade.PhasePreBootstrap {
-		t.Fatalf("phase = %q, want %q", V150UpgradeAttrsMigration.Phase, upgrade.PhasePreBootstrap)
+	if v150.V150UpgradeAttrsMigration.Phase != upgrade.PhasePreBootstrap {
+		t.Fatalf("phase = %q, want %q", v150.V150UpgradeAttrsMigration.Phase, upgrade.PhasePreBootstrap)
 	}
 }
 
@@ -200,7 +201,7 @@ func TestV150AttrsMigrateCreatesAttrsTableForFreshSchemaPath(t *testing.T) {
 	logDB := openV150SQLiteTestDB(t, "logs.db")
 
 	op := &v150BootstrapTestOperator{dataDB: dataDB, logDB: logDB}
-	if err := V150AttrsMigrate(op, func(string) {}); err != nil {
+	if err := v150.V150AttrsMigrate(op, func(string) {}); err != nil {
 		t.Fatalf("V150AttrsMigrate() error = %v", err)
 	}
 

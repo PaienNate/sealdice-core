@@ -224,8 +224,8 @@ func ConvertServe(dbSql *sqlx.DB) error {
 		return err
 	}
 
-	if err := EnsureLegacyServeSchema(dbSql); err != nil {
-		return err
+	if schemaErr := EnsureLegacyServeSchema(dbSql); schemaErr != nil {
+		return schemaErr
 	}
 	now := time.Now()
 	nowTimestamp := now.Unix()

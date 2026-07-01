@@ -215,12 +215,6 @@ func needsSQLiteTableShapeRepair(db *gorm.DB, table string, expected []sqliteExp
 	return !sqliteColumnsMatch(columns, expected), nil
 }
 
-func init() {
-	if sqliteCopyBatchSize <= 0 {
-		panic(errors.New("sqliteCopyBatchSize must be positive"))
-	}
-}
-
 func ensureSQLiteTableShape(
 	db *gorm.DB,
 	table string,
@@ -413,6 +407,9 @@ CREATE TABLE IF NOT EXISTS %s (
 func bulkCopySQLiteTable(db *gorm.DB, src, dst string, insertColumns, selectColumns []string) error {
 	if len(insertColumns) == 0 || len(selectColumns) == 0 {
 		return nil
+	}
+	if sqliteCopyBatchSize <= 0 {
+		return errors.New("sqliteCopyBatchSize must be positive")
 	}
 
 	var minRow struct {

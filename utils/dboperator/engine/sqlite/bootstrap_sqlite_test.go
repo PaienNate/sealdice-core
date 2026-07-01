@@ -1,20 +1,20 @@
-package sqlite
+package sqlite_test
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"sealdice-core/utils/constant"
+	"sealdice-core/utils/dboperator/engine/sqlite"
 )
 
 func TestBootstrapSchemaCreatesPatchLogOnly(t *testing.T) {
 	dataDir := t.TempDir()
 	t.Setenv("DATADIR", dataDir)
 
-	engine := &SQLiteEngine{}
-	if err := engine.Init(context.Background()); err != nil {
+	engine := &sqlite.SQLiteEngine{}
+	if err := engine.Init(t.Context()); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
 	t.Cleanup(engine.Close)

@@ -1,4 +1,4 @@
-package store
+package store_test
 
 import (
 	"path/filepath"
@@ -10,6 +10,7 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 
 	upgrade "sealdice-core/utils/upgrader"
+	"sealdice-core/utils/upgrader/store"
 )
 
 func openStoreTestDB(t *testing.T) *gorm.DB {
@@ -34,7 +35,7 @@ func openStoreTestDB(t *testing.T) *gorm.DB {
 
 func TestDBStoreTreatsFailureRecordAsApplied(t *testing.T) {
 	db := openStoreTestDB(t)
-	store, err := NewDBStore(db, "")
+	store, err := store.NewDBStore(db, "")
 	if err != nil {
 		t.Fatalf("NewDBStore() error = %v", err)
 	}
@@ -45,13 +46,13 @@ func TestDBStoreTreatsFailureRecordAsApplied(t *testing.T) {
 		Success:   false,
 		Message:   "failed before",
 	}
-	if err := store.SaveRecord(rec); err != nil {
-		t.Fatalf("SaveRecord() error = %v", err)
+	if saveErr := store.SaveRecord(rec); saveErr != nil {
+		t.Fatalf("SaveRecord() error = %v", saveErr)
 	}
 
-	applied, err := store.IsApplied("001_failure")
-	if err != nil {
-		t.Fatalf("IsApplied() error = %v", err)
+	applied, applyErr := store.IsApplied("001_failure")
+	if applyErr != nil {
+		t.Fatalf("IsApplied() error = %v", applyErr)
 	}
 	if !applied {
 		t.Fatal("expected failure record to count as applied")
@@ -60,7 +61,7 @@ func TestDBStoreTreatsFailureRecordAsApplied(t *testing.T) {
 
 func TestDBStoreLoadRecordsPreservesSuccessFlag(t *testing.T) {
 	db := openStoreTestDB(t)
-	store, err := NewDBStore(db, "")
+	store, err := store.NewDBStore(db, "")
 	if err != nil {
 		t.Fatalf("NewDBStore() error = %v", err)
 	}
@@ -77,11 +78,11 @@ func TestDBStoreLoadRecordsPreservesSuccessFlag(t *testing.T) {
 		Success:   true,
 		Message:   "ok",
 	}
-	if err := store.SaveRecord(failed); err != nil {
-		t.Fatalf("SaveRecord(failed) error = %v", err)
+	if saveErr := store.SaveRecord(failed); saveErr != nil {
+		t.Fatalf("SaveRecord(failed) error = %v", saveErr)
 	}
-	if err := store.SaveRecord(succeeded); err != nil {
-		t.Fatalf("SaveRecord(succeeded) error = %v", err)
+	if saveErr := store.SaveRecord(succeeded); saveErr != nil {
+		t.Fatalf("SaveRecord(succeeded) error = %v", saveErr)
 	}
 
 	records, err := store.LoadRecords()
@@ -103,18 +104,18 @@ func TestDBStoreImportsLegacyJSONRecords(t *testing.T) {
 	db := openStoreTestDB(t)
 	jsonPath := filepath.Join(t.TempDir(), "upgrade_metadata.json")
 
-	legacy := NewJSONStore(jsonPath)
+	legacy := store.NewJSONStore(jsonPath)
 	rec := upgrade.UpgradeRecord{
 		ID:        "001_legacy",
 		Timestamp: time.Now(),
 		Success:   true,
 		Message:   "legacy ok",
 	}
-	if err := legacy.SaveRecord(rec); err != nil {
-		t.Fatalf("legacy.SaveRecord() error = %v", err)
+	if saveErr := legacy.SaveRecord(rec); saveErr != nil {
+		t.Fatalf("legacy.SaveRecord() error = %v", saveErr)
 	}
 
-	store, err := NewDBStore(db, jsonPath)
+	store, err := store.NewDBStore(db, jsonPath)
 	if err != nil {
 		t.Fatalf("NewDBStore() error = %v", err)
 	}

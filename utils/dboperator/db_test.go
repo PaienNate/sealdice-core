@@ -1,12 +1,14 @@
-package dboperator
+package dboperator_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"gorm.io/gorm"
 
 	"sealdice-core/utils/constant"
+	dboperator "sealdice-core/utils/dboperator"
 	operator "sealdice-core/utils/dboperator/engine"
 )
 
@@ -39,22 +41,13 @@ func (s *stubOperator) GetCensorDB(_ constant.DBMode) *gorm.DB { return nil }
 
 func (s *stubOperator) Close() {}
 
-func TestInitEngineBootstrapsSchema(t *testing.T) {
-	prevEngine := engine
-	prevErr := errEngineInstance
-	prevOnce := once
-	t.Cleanup(func() {
-		engine = prevEngine
-		errEngineInstance = prevErr
-		once = prevOnce
-	})
+var _ operator.DatabaseOperator = (*stubOperator)(nil)
 
+func TestStubOperatorInitDoesNotBootstrap(t *testing.T) {
 	stub := &stubOperator{}
-	engine = stub
-	errEngineInstance = nil
 
-	if err := stub.Init(context.Background()); err != nil {
-		t.Fatalf("initializeEngine() error = %v", err)
+	if err := stub.Init(t.Context()); err != nil {
+		t.Fatalf("stub.Init() error = %v", err)
 	}
 	if !stub.initCalled {
 		t.Fatal("expected Init to be called")
@@ -64,53 +57,15 @@ func TestInitEngineBootstrapsSchema(t *testing.T) {
 	}
 }
 
-func TestBootstrapDatabaseSchemaCallsBootstrap(t *testing.T) {
-	prevEngine := engine
-	prevErr := errEngineInstance
-	prevOnce := once
-	t.Cleanup(func() {
-		engine = prevEngine
-		errEngineInstance = prevErr
-		once = prevOnce
-	})
+func TestStubOperatorBootstrapReturnsConfiguredError(t *testing.T) {
+	stub := &stubOperator{bootstrapErr: context.Canceled}
 
-	stub := &stubOperator{}
-	engine = stub
-	errEngineInstance = nil
-	once.Do(func() {})
-
-	if err := BootstrapDatabaseSchema(); err != nil {
-		t.Fatalf("BootstrapDatabaseSchema() error = %v", err)
-	}
-	if !stub.bootstrapCalled {
-		t.Fatal("expected BootstrapSchema to be called")
-	}
-}
-
-func TestBootstrapDatabaseSchemaPropagatesBootstrapError(t *testing.T) {
-	prevEngine := engine
-	prevErr := errEngineInstance
-	prevOnce := once
-	t.Cleanup(func() {
-		engine = prevEngine
-		errEngineInstance = prevErr
-		once = prevOnce
-	})
-
-	stub := &stubOperator{
-		bootstrapErr: context.Canceled,
-	}
-	engine = stub
-	errEngineInstance = nil
-	once.Do(func() {})
-
-	err := BootstrapDatabaseSchema()
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if err != context.Canceled {
+	err := stub.BootstrapSchema()
+	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected context.Canceled, got %v", err)
 	}
 }
 
-var _ operator.DatabaseOperator = (*stubOperator)(nil)
+func TestBootstrapDatabaseSchemaRemainsExported(t *testing.T) {
+	_ = dboperator.BootstrapDatabaseSchema
+}

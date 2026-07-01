@@ -27,6 +27,18 @@ type SQLiteEngine struct {
 	writeList map[dbName]*gorm.DB
 }
 
+func NewTestSQLiteEngine(read map[string]*gorm.DB, write map[string]*gorm.DB) *SQLiteEngine {
+	engine := &SQLiteEngine{
+		readList:  make(map[dbName]*gorm.DB, len(read)),
+		writeList: make(map[dbName]*gorm.DB, len(write)),
+	}
+	for _, key := range []dbName{DataDBKey, LogsDBKey, CensorsDBKey} {
+		engine.readList[key] = read[string(key)]
+		engine.writeList[key] = write[string(key)]
+	}
+	return engine
+}
+
 func (s *SQLiteEngine) Type() string {
 	return "sqlite"
 }
